@@ -1,1 +1,41 @@
 // app global css
+
+
+.border-outline {
+  border: 1px solid var(--q-dark);
+}
+
+.border-radius-sm {
+  border-radius: 6px;
+}
+
+.stat-card {
+  border-radius: 8px;
+  background: var(--q-dark);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transform: translateY(-1px);
+  }
+}
+
+.text-primary-light {
+  color: var(--q-primary);
+}
+
+.bg-primary-light {
+  background: rgba(249, 115, 22, 0.15) !important; // Vibrant orange fading
+}
+
+.bg-accent-light {
+  background: rgba(250, 204, 21, 0.15) !important; // Yellow/Amber fading
+}
+
+.activity-item {
+  transition: background-color 0.2s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
