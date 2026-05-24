@@ -43,16 +43,27 @@ export interface Reference {
   email: string;
   phone: string;
 }
+export interface Language {
+  name: string;
+  level: string;
+}
+
+export interface Contact {
+  email: string;
+  phone: string;
+  linkedin: string;
+  github: string;
+  location: string;
+  links: ProfileLink[];
+}
 
 export interface UserProfile {
   id: string; // We'll use 'current' as the single profile id for now
   firstName: string;
   lastName: string;
-  email: string;
-  phone: string;
-  location: string;
-  links: ProfileLink[];
+  contact: Contact;
   summary: string;
+  language: Language[];
   experience: Experience[];
   education: Education[];
   skills: SkillCategory[];

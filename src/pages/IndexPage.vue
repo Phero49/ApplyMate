@@ -110,7 +110,7 @@ import chatgptIcon from "../assets/chatgpt-icon.svg";
 import deepseekIcon from "../assets/deepseek-logo-icon.svg";
 import geminiIcon from "../assets/google-gemini-icon.svg";
 import qwenIcon from "../assets/qwen-ai-icon.svg";
-import { onMounted, ref } from "vue";
+import { ref } from "vue";
 const $q = useQuasar();
 const bex = $q.bex;
 const openExtension = (page: string) => {
@@ -192,7 +192,9 @@ const actions = [
 function getJobDetails(onSuccess: (jobDetails: string) => void) {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const tab = tabs[0];
-    console.log(tab);
+    if (!tab) {
+      return;
+    }
     void chrome.tabs.sendMessage(
       tab.id!,
       { event: "getJobDetails" },

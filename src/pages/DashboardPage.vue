@@ -114,7 +114,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeMount } from "vue";
+import { ref, onMounted } from "vue";
 import { getActivities, addActivity, type ApplicationActivity } from "src/db";
 
 const recentActivities = ref<ApplicationActivity[]>([]);

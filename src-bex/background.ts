@@ -9,7 +9,7 @@
  */
 import { createBridge } from "#q-app/bex/background";
 import type { PortName } from "@quasar/app-vite";
-import { getProfile } from "src/db";
+//import { getProfile } from "src/db";
 
 function openExtension(page: string) {
   chrome.tabs.create(
@@ -22,6 +22,7 @@ function openExtension(page: string) {
   );
 }
 let activeTab: { url: string; port: string; id: number } | null = null;
+let listenToPageLoad = false;
 const openAiSite = async (
   platform: "chatgpt" | "deepseek" | "gemini" | "qwen",
 
@@ -36,10 +37,11 @@ const openAiSite = async (
   await chrome.tabs.create({
     url: aiSites[platform],
   });
-
   bridge.on("aiSiteLoaded", ({ payload }) => {
-    activeTab = payload;
-    onLoaded();
+    if (listenToPageLoad) {
+      activeTab = payload;
+      onLoaded();
+    }
   });
 };
 const currentOpenedTab = null as null | {
@@ -86,6 +88,7 @@ bridge.on("openExtension", ({ payload }) => {
 });
 
 bridge.on("generate-resume", ({ payload }) => {
+  listenToPageLoad = true;
   void openAiSite(payload.ai, () => {
     void bridge.send({
       event: "generate-resume",
@@ -95,6 +98,7 @@ bridge.on("generate-resume", ({ payload }) => {
         jobDescription: payload.jobDescription,
       },
     });
+    listenToPageLoad = false;
   });
 });
 

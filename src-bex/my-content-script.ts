@@ -166,41 +166,93 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-function watchDeepSeek() {
-  const elements = Array.from(document.querySelectorAll(".ds-markdown"));
-  console.log(elements.length);
-  if (elements.length === 0) {
-    //retry 40 times with 1000s interval
-    for (let i = 0; i < 60; i++) {
-      setTimeout(() => {
-        watchDeepSeek();
-      }, 1000);
-    }
-    return;
-  }
+// let retries = 0;
+// const MAX_RETRIES = 100;
 
-  const lastElement = elements.at(-1);
-  if (lastElement) {
-    let timeout: NodeJS.Timeout;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const observer = new MutationObserver((_) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        alert("stop");
-      }, 4000);
-    });
-    observer.observe(lastElement, { childList: true, subtree: true });
-  }
-}
+// function watchDeepSeek(event: string) {
+//   const container = document.querySelector(".ds-virtual-list-visible-items");
+//   if (container == null) {
+//     setTimeout(() => {
+//       watchDeepSeek(event);
+//     }, 4000);
+//     return;
+//   }
+//   let currentChildren = 0
+//   const observer = new MutationObserver(() => {
+
+//     const elements = Array.from(document.querySelectorAll(".ds-markdown"));
+//     if (currentChildren > 0 && elements.length == currentChildren) {
+//       return
+//     }
+//     currentChildren = elements.length
+//     if (elements.length === 0) {
+//       if (retries >= MAX_RETRIES) return;
+
+//       retries++;
+
+//       setTimeout(() => {
+//         watchDeepSeek(event);
+//       }, 5000);
+
+//       return;
+//     }
+//     retries = 0;
+
+//     const lastElement = elements.at(-1);
+//     console.log(lastElement);
+//     debugger;
+//     if (!lastElement) return;
+
+//     const getjson = (maxRetries: number) => {
+//       const codeBlock = lastElement.querySelector("code");
+//       if (codeBlock) {
+//         const text = codeBlock.textContent.trim();
+//         try {
+//           const json = JSON.parse(text);
+//           console.log(json);
+//           void bridge.send({ event, to: "background", payload: json });
+//         } catch (_) {
+//           console.log("invalid json try again");
+//           if (maxRetries === 0) return;
+//           setTimeout(() => {
+//             getjson(maxRetries - 1);
+//           }, 4000);
+//         }
+//         console.log(text);
+//       }
+//     };
+//     getjson(15);
+//   });
+//   observer.observe(container, { childList: true, subtree: true });
+// }
+
+window.addEventListener("deepseek-chat-ready", (event) => {
+  console.log(event);
+});
 
 function watchAiGeneration() {
   switch (window.location.hostname) {
     case "chatgpt.com":
       break;
 
-    case "chat.deepseek.com":
-      watchDeepSeek();
+    case "chat.deepseek.com": {
+      window.postMessage(
+        { type: "watchChatDeepSeekResponse" },
+        location.origin,
+      );
+      // const event = new CustomEvent("watchChatDeepSeekResponse");
+      // window.dispatchEvent(event);
+      window.addEventListener("message", (event) => {
+        console.log(event);
+        if (event.data.type === "type") {
+          //extract json from md code block
+          const json = event.data.text.split("```json")[1].split("```")[0];
+          console.log(json, "json");
+        }
+      });
+      console.log("watchChatDeepSeekResponse");
       break;
+    }
 
     case "gemini.google.com":
       void waitForselector("rich-textarea");

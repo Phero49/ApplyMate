@@ -45,6 +45,7 @@
         <q-tab name="education" icon="school" label="Education" no-caps />
         <q-tab name="skills" icon="code" label="Skills" no-caps />
         <q-tab name="projects" icon="rocket_launch" label="Projects" no-caps />
+        <q-tab name="languages" icon="language" label="Languages" no-caps />
         <q-tab
           name="references"
           icon="verified_user"
@@ -79,7 +80,7 @@
                 </div>
                 <div class="col-12 col-sm-6">
                   <q-input
-                    v-model="profile.email"
+                    v-model="profile.contact.email"
                     type="email"
                     label="Email Address"
                     outlined
@@ -88,7 +89,7 @@
                 </div>
                 <div class="col-12 col-sm-6">
                   <q-input
-                    v-model="profile.phone"
+                    v-model="profile.contact.phone"
                     type="tel"
                     label="Phone Number"
                     outlined
@@ -97,7 +98,7 @@
                 </div>
                 <div class="col-12 col-sm-6">
                   <q-input
-                    v-model="profile.location"
+                    v-model="profile.contact.location"
                     label="Location (City, Country)"
                     outlined
                     dense
@@ -121,7 +122,7 @@
 
                   <div
                     class="row q-col-gutter-sm q-mb-sm"
-                    v-for="(link, index) in profile.links"
+                    v-for="(link, index) in profile.contact.links"
                     :key="index"
                   >
                     <div class="col-12 col-sm-4">
@@ -561,6 +562,76 @@
             </q-list>
           </div>
 
+          <!-- Languages Section -->
+          <div v-show="activeTab === 'languages'" class="transition-fade">
+            <div class="row justify-end q-mb-sm">
+              <q-btn
+                outline
+                no-caps
+                color="primary"
+                icon="add"
+                label="Add Language"
+                size="sm"
+                @click="addLanguage"
+              />
+            </div>
+
+            <div
+              v-if="profile.language.length === 0"
+              class="border-outline q-pa-lg text-center text-grey rounded-borders"
+            >
+              <q-icon name="language" size="lg" class="q-mb-sm opacity-50" />
+              <div class="text-body2">No languages added.</div>
+            </div>
+
+            <q-list class="q-gutter-y-sm">
+              <q-card
+                v-for="(lang, index) in profile.language"
+                :key="index"
+                bordered
+                flat
+                class="border-outline relative-position form-card q-pa-md"
+              >
+                <q-btn
+                  icon="close"
+                  flat
+                  round
+                  dense
+                  class="absolute-top-right text-grey hover-red q-ma-xs"
+                  @click="removeLanguage(index)"
+                  style="z-index: 10"
+                  size="sm"
+                />
+                <div class="row q-col-gutter-sm">
+                  <div class="col-12 col-sm-6">
+                    <q-input
+                      v-model="lang.name"
+                      label="Language Name"
+                      outlined
+                      dense
+                      placeholder="e.g. English"
+                    />
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <q-select
+                      v-model="lang.level"
+                      label="Proficiency Level"
+                      outlined
+                      dense
+                      :options="[
+                        'Native',
+                        'Fluent',
+                        'Professional',
+                        'Intermediate',
+                        'Basic',
+                      ]"
+                    />
+                  </div>
+                </div>
+              </q-card>
+            </q-list>
+          </div>
+
           <!-- Skills Section -->
           <div v-show="activeTab === 'skills'" class="transition-fade">
             <div class="row justify-end q-mb-sm">
@@ -579,11 +650,7 @@
               v-if="profile.skills.length === 0"
               class="border-outline q-pa-lg text-center text-grey rounded-borders"
             >
-              <q-icon
-                name="code"
-                size="lg"
-                class="q-mb-sm opacity-50"
-              />
+              <q-icon name="code" size="lg" class="q-mb-sm opacity-50" />
               <div class="text-body2">No skill categories added.</div>
             </div>
 
@@ -654,9 +721,15 @@
 </template>
 
 <script setup lang="ts">
+//eslint-disable @typescript-eslint/no-explicit-any
 import { ref, onMounted } from "vue";
 import { useQuasar } from "quasar";
-import { getProfile, saveProfile, type UserProfile, type SkillCategory } from "src/db";
+import {
+  getProfile,
+  saveProfile,
+  type UserProfile,
+  type SkillCategory,
+} from "src/db";
 import { toRaw } from "vue";
 
 const $q = useQuasar();
@@ -666,14 +739,19 @@ const profile = ref<UserProfile>({
   id: "current",
   firstName: "",
   lastName: "",
-  email: "",
-  phone: "",
-  location: "",
-  links: [
-    { name: "LinkedIn", url: "" },
-    { name: "GitHub", url: "" },
-  ],
+  contact: {
+    email: "",
+    phone: "",
+    linkedin: "",
+    github: "",
+    location: "",
+    links: [
+      { name: "LinkedIn", url: "" },
+      { name: "GitHub", url: "" },
+    ],
+  },
   summary: "",
+  language: [],
   experience: [
     {
       jobTitle: "",
@@ -717,11 +795,19 @@ const removeExperience = (index: number) => {
 };
 
 const addLink = () => {
-  profile.value.links.push({ name: "", url: "" });
+  profile.value.contact.links.push({ name: "", url: "" });
 };
 
 const removeLink = (index: number) => {
-  profile.value.links.splice(index, 1);
+  profile.value.contact.links.splice(index, 1);
+};
+
+const addLanguage = () => {
+  profile.value.language.push({ name: "", level: "Professional" });
+};
+
+const removeLanguage = (index: number) => {
+  profile.value.language.splice(index, 1);
 };
 
 const addEducation = () => {
@@ -783,7 +869,18 @@ onMounted(async () => {
 
 const onSubmit = async () => {
   try {
-    await saveProfile(toRaw(profile.value));
+    const payload = {} as UserProfile;
+    for (const key in profile.value) {
+      const k = key as keyof UserProfile;
+      if (typeof profile.value[k] === "object") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        payload[k] = toRaw(profile.value[k]) as any;
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        payload[k] = profile.value[k] as any;
+      }
+    }
+    await saveProfile(payload);
     $q.notify({
       type: "positive",
       message: "Profile saved successfully",
