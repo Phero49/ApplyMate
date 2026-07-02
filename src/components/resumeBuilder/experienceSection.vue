@@ -1,39 +1,52 @@
 <template>
   <div class="q-py-sm">
-    <ContentItem>
-      <div
-        class="text-subtitle1 text-uppercase text-bold text-primary q-pa-xs"
-      >
+    <ContentItem itemName="experience-header">
+      <div class="text-subtitle1 text-uppercase text-bold q-pa-xs">
         Experience
       </div>
       <q-separator class="bg-primary" style="height: 2px" />
     </ContentItem>
 
-    <div class="q-mb-md" v-for="n in 2" :key="n">
-      <ContentItem>
+    <div
+      class="q-mb-md"
+      v-for="(exp, i) in appStore.resume.experience"
+      :key="i"
+    >
+      <ContentItem :itemName="'experience.' + i" section="experience">
         <div class="row justify-between text-bold q-pa-xs">
-          <div>Senior Software Engineer</div>
-          <div>Jan 2020 - Present</div>
+          <ContentItem
+            :itemName="'experience.' + i + '.title'"
+            section="experience-item"
+          >
+            <div>{{ exp.title }}</div>
+          </ContentItem>
+          <ContentItem
+            :itemName="'experience.' + i + '.dates'"
+            section="experience-item"
+          >
+            <div>{{ exp.dates }}</div>
+          </ContentItem>
         </div>
       </ContentItem>
 
-      <ContentItem>
+      <ContentItem
+        :itemName="'experience.' + i + '.company'"
+        section="experience-item"
+      >
         <div class="row justify-between text-italic q-pa-xs">
-          <div>Tech Innovations Inc.</div>
-          <div>San Francisco, CA</div>
+          <div>{{ exp.company }}</div>
         </div>
       </ContentItem>
 
       <ul class="q-pl-lg q-mt-xs q-mb-none text-body2">
-        <ContentItem>
+        <ContentItem
+          v-for="(bullet, j) in exp.bullets"
+          :key="j"
+          :itemName="'experience.' + i + '.bullets.' + j"
+          section="experience-item"
+        >
           <li class="q-pa-xs">
-            Lead the development of multiple scalable web applications using
-            Vue.js and Node.js.
-          </li>
-        </ContentItem>
-        <ContentItem>
-          <li class="q-pa-xs">
-            Mentored junior developers and improved team productivity by 20%.
+            {{ bullet }}
           </li>
         </ContentItem>
       </ul>
@@ -43,6 +56,8 @@
 
 <script setup lang="ts">
 import ContentItem from "./ContentItem.vue";
+import { useAppContext } from "src/stores/appStore";
+const appStore = useAppContext();
 </script>
 
 <style scoped></style>

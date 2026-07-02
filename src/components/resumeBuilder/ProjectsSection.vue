@@ -1,30 +1,42 @@
 <template>
   <div class="q-py-sm">
-    <ContentItem>
-      <div
-        class="text-subtitle1 text-uppercase text-bold text-primary q-pa-xs"
-      >
+    <ContentItem itemName="projects-header">
+      <div class="text-subtitle1 text-uppercase text-bold q-pa-xs">
         Projects
       </div>
       <q-separator class="bg-primary" style="height: 2px" />
     </ContentItem>
-    <div class="q-mb-md" v-for="n in 2" :key="n">
-      <ContentItem>
+    <div
+      class="q-mb-md"
+      v-for="(project, i) in appStore.resume.projects"
+      :key="i"
+    >
+      <ContentItem :itemName="'projects.' + i" section="projects">
         <div class="row justify-between text-bold q-pa-xs">
-          <div>E-commerce Platform</div>
-          <div>2022</div>
+          <ContentItem
+            :itemName="'projects.' + i + '.title'"
+            section="project-item"
+          >
+            <div>{{ project.title }}</div>
+          </ContentItem>
+          <ContentItem
+            :itemName="'projects.' + i + '.dates'"
+            section="project-item"
+          >
+            <div>{{ project.dates }}</div>
+          </ContentItem>
         </div>
       </ContentItem>
-      <ContentItem>
-        <div class="text-italic q-pa-xs text-body2 text-grey-8">
-          Vue.js, Node.js, MongoDB
-        </div>
-      </ContentItem>
+
       <ul class="q-pl-lg q-mt-xs q-mb-none text-body2">
-        <ContentItem>
+        <ContentItem
+          v-for="(bullet, j) in project.bullets"
+          :key="j"
+          :itemName="'projects.' + i + '.bullets.' + j"
+          section="project-item"
+        >
           <li class="q-pa-xs">
-            Built a full-stack e-commerce platform handling 10k+ monthly active
-            users.
+            {{ bullet }}
           </li>
         </ContentItem>
       </ul>
@@ -34,6 +46,8 @@
 
 <script setup lang="ts">
 import ContentItem from "./ContentItem.vue";
+import { useAppContext } from "src/stores/appStore";
+const appStore = useAppContext();
 </script>
 
 <style scoped></style>

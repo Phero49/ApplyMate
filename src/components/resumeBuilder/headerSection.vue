@@ -1,25 +1,28 @@
 <template>
-  <div class="header q-py-md" section="header">
-    <ContentItem>
-      <div class="name text-primary text-uppercase q-pa-xs">
-        {{ name }}
-      </div>
-    </ContentItem>
+  <ContentItem type="section-container" itemName="header" section="header">
+    <div class="header q-py-md">
+      <ContentItem itemName="name" section="header-item">
+        <div class="name text-uppercase q-pa-xs">
+          {{ resume.name }}
+        </div>
+      </ContentItem>
 
-    <ContentItem>
-      <div class="subtitle text-grey-8 text-weight-medium q-pa-xs text-uppercase letter-spacing-1">
-        {{ title }}
-      </div>
-    </ContentItem>
-  </div>
+      <ContentItem itemName="headline" section="header-item">
+        <div
+          class="subtitle text-grey-8 text-weight-medium q-pa-xs text-uppercase letter-spacing-1"
+        >
+          {{ resume.headline }}
+        </div>
+      </ContentItem>
+    </div>
+  </ContentItem>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
 import ContentItem from "./ContentItem.vue";
+import { useAppContext } from "src/stores/appStore";
 
-const name = ref("JOHN DOE");
-const title = ref("SOFTWARE ENGINEER");
+const resume = useAppContext().resume;
 </script>
 
 <style scoped>

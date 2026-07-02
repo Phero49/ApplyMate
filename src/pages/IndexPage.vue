@@ -105,16 +105,18 @@ import {
   symRoundedInboxText,
 } from "@quasar/extras/material-symbols-rounded";
 import { useQuasar } from "quasar";
-import { addSavedJob, addSavedLink, getProfile } from "src/db";
+import { addSavedLink, getProfile } from "src/db";
 import chatgptIcon from "../assets/chatgpt-icon.svg";
 import deepseekIcon from "../assets/deepseek-logo-icon.svg";
 import geminiIcon from "../assets/google-gemini-icon.svg";
 import qwenIcon from "../assets/qwen-ai-icon.svg";
 import { ref } from "vue";
+import { type BexBridge } from "@quasar/app-vite";
+
 const $q = useQuasar();
-const bex = $q.bex;
+const bex = $q.bex as BexBridge;
 const openExtension = (page: string) => {
-  bex.send({ event: "openExtension", payload: page, to: "background" });
+  void bex.send({ event: "openExtension", payload: page, to: "background" });
 };
 const defaultAI = ref("chatgpt");
 const actions = [
@@ -125,13 +127,15 @@ const actions = [
     action: () => {
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
       getJobDetails(async (jobDetails) => {
+        console.log(jobDetails);
         const profile = await getProfile();
-        console.log(profile);
-        bex.send({
+        void bex.send({
           event: "generate-resume",
           to: "background",
           payload: {
-            jobDescription: jobDetails,
+            jobDescription: jobDetails.jobDetails,
+            url: jobDetails.url,
+            title: jobDetails.title,
             resumeData: JSON.stringify(profile),
             ai: defaultAI.value,
           },
@@ -150,15 +154,26 @@ const actions = [
     title: "save link",
     description: "save link there will be no notifications about saved links",
     action: async () => {
-      const tab = await bex.send({
-        event: "getCurrentOpenedTab",
-        to: "background",
-      });
-      await addSavedLink({
-        icon: tab.favIconUrl,
-        title: tab.title,
-        url: tab.url,
-      });
+      try {
+        const tab = await bex.send({
+          event: "getCurrentOpenedTab",
+          to: "background",
+        });
+        if (tab == undefined) {
+          console.log("failed to get tab");
+          return;
+        }
+        await addSavedLink({
+          icon: tab.favIconUrl,
+          title: tab.title,
+          url: tab.url,
+        });
+        $q.notify({ message: "link saved", type: "positive" });
+      } catch (e) {
+        console.error("error", e);
+        alert(e);
+        $q.notify({ message: "error failed to save link", type: "negative" });
+      }
     },
   },
   {
@@ -167,41 +182,81 @@ const actions = [
     description:
       "save job you be notified with reminders based on the job closing date",
     action: async () => {
-      const tab = await bex.send({
-        event: "getCurrentOpenedTab",
+      const body = await bex.send({
+        event: "getCurrentDocumentBodyText",
         to: "background",
       });
-      //fetch close date
-      await addSavedJob({
-        icon: tab.favIconUrl,
-        title: tab.title,
-        url: tab.url,
-        closeDate: "",
-        savedAt: new Date().toISOString(),
+
+      await bex.send({
+        event: "extract-job-details",
+        to: "background",
+        payload: {
+          platform: defaultAI.value,
+          window: body.window,
+          prompt: `
+         extract details from description descriptions as   a json
+        on the sumary be a little creative so that one can understand the job post without
+        needing to read the full description you can include things the user should take note
+        for new lines be explicit by using   \n newline escape also do not include emojis formatting 
+        you can use markdown for the summary
+         ***structure***
+         \`\`\` json
+            {
+          title:string,
+           publishedDate:string //js supported dates
+          closeDate:string , //js supported dates
+          company:string,
+          jobSummary:string,
+          applicationMode: string[] //'postal mail' | 'email' | 'external website' | 'unknown'
+          }
+       \`\`\`
+
+       ***job details****
+       ${body.data.textContent}
+
+         `,
+        },
       });
+      console.log();
+      //fetch close date
     },
   },
   {
     icon: "edit",
     title: "autofill",
     description: "autofill job application forms",
-    action: () => {},
+    action: async () => {
+      const form = await bex.send({
+        event: "getFormMappings",
+        to: "background",
+        payload: {
+          ai: defaultAI.value,
+        },
+      });
+      console.log(form);
+    },
   },
 ];
 
-function getJobDetails(onSuccess: (jobDetails: string) => void) {
+function getJobDetails(
+  onSuccess: (data: { jobDetails: string; url: string; title: string }) => void,
+) {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const tab = tabs[0];
     if (!tab) {
       return;
     }
-    void chrome.tabs.sendMessage(
-      tab.id!,
-      { event: "getJobDetails" },
-      (response) => {
-        onSuccess(response.jobDetails);
-      },
-    );
+    chrome.tabs.sendMessage(tab.id!, { type: "getJobDetails" }, (response) => {
+      console.log(response, "response");
+      if (response) {
+        onSuccess(response);
+      } else {
+        $q.notify({
+          message: "error failed to get job details",
+          type: "negative",
+        });
+      }
+    });
   });
 }
 </script>

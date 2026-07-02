@@ -45,3 +45,10 @@
     background: rgba(255, 255, 255, 0.05);
   }
 }
+
+.item-selected {
+  border: 1.5px groove var(--q-primary);
+  margin: 3px;
+  padding: 2px;
+  border-radius: 4px;
+}

@@ -1,24 +1,30 @@
 <template>
   <div class="q-py-sm">
-    <ContentItem>
-      <div
-        class="text-subtitle1 text-uppercase text-bold text-primary q-pa-xs"
-      >
+    <ContentItem itemName="certifications-header">
+      <div class="text-subtitle1 text-uppercase text-bold q-pa-xs">
         Certifications
       </div>
       <q-separator class="bg-primary" style="height: 2px" />
     </ContentItem>
-    <div class="q-mb-md">
-      <ContentItem>
+    <div
+      class="q-mb-md"
+      v-for="(cert, i) in appStore.resume.certifications"
+      :key="i"
+    >
+      <ContentItem :itemName="'certifications.' + i" section="certifications">
         <div class="row justify-between text-bold q-pa-xs">
-          <div>AWS Certified Solutions Architect</div>
-          <div>2023</div>
-        </div>
-      </ContentItem>
-      <ContentItem>
-        <div class="row justify-between text-bold q-pa-xs">
-          <div>Certified ScrumMaster (CSM)</div>
-          <div>2020</div>
+          <ContentItem
+            :itemName="'certifications.' + i + '.name'"
+            section="certification-item"
+          >
+            <div>{{ cert.name }}</div>
+          </ContentItem>
+          <ContentItem
+            :itemName="'certifications.' + i + '.date'"
+            section="certification-item"
+          >
+            <div>{{ cert.date }}</div>
+          </ContentItem>
         </div>
       </ContentItem>
     </div>
@@ -27,6 +33,8 @@
 
 <script setup lang="ts">
 import ContentItem from "./ContentItem.vue";
+import { useAppContext } from "src/stores/appStore";
+const appStore = useAppContext();
 </script>
 
 <style scoped></style>

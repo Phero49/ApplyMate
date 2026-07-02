@@ -42,7 +42,7 @@ const linksList: EssentialLinkProps[] = [
     title: "Dashboard",
     caption: "Overview & Statistics",
     icon: "dashboard",
-    link: "/app",
+    link: "/app/dashboard",
   },
   {
     title: "Notifications",
@@ -57,7 +57,13 @@ const linksList: EssentialLinkProps[] = [
     link: "/app/saved-links",
   },
   {
-    title: "Templates",
+    title: "Saved jobs",
+    caption: "Your bookmarked jobs",
+    icon: "work",
+    link: "/app/saved-jobs",
+  },
+  {
+    title: "generated Resumes/cvs",
     caption: "Browse Resume Templates",
     icon: "description",
     link: "/app/templates",

@@ -1,60 +1,36 @@
 <template>
-  <div class="row q-gutter-x-md q-ml-md q-mb-md no-wrap">
-    <q-btn
-      icon="undo"
-      dense
-      label="undo"
-      flat
-      size="sm"
-      @click="domStore.undo()"
-      :disable="domStore.undoStack.length === 0"
-    >
-      <q-tooltip>Undo (Ctrl+Z)</q-tooltip>
-    </q-btn>
-    <q-btn
-      icon="redo"
-      dense
-      label="redo"
-      flat
-      size="sm"
-      @click="domStore.redo()"
-      :disable="domStore.redoStack.length === 0"
-    >
-      <q-tooltip>Redo (Ctrl+Y)</q-tooltip>
-    </q-btn>
-  </div>
-  <div class="q-pa-xs row items-center no-wrap text-white rounded-borders">
+  <div class="row q-gutter-x-md q-ml-md q-mb-md no-wrap"></div>
+  <div class="q-pa-xs no-wrap text-white rounded-borders">
     <!-- History -->
-
+    <div class="text-subtitle1 q-mb-sm">Text Formatting</div>
     <!-- basic formatting -->
-    <div class="row no-wrap">
+    <div class="row justify-between no-wrap">
       <q-btn
         icon="bi-type-bold"
         dense
         flat
         size="sm"
-        @click="applyCommand('bold')"
+        @click="applyStyle('fontWeight', 'bold')"
       />
       <q-btn
         icon="bi-type-italic"
         dense
         flat
         size="sm"
-        @click="applyCommand('italic')"
+        @click="applyStyle('fontStyle', 'italic')"
       />
       <q-btn
         icon="bi-type-underline"
         dense
         flat
         size="sm"
-        @click="applyCommand('underline')"
+        @click="applyStyle('textDecoration', 'underline')"
       />
     </div>
 
-    <q-separator vertical class="q-mx-xs" />
-
     <!-- alignment -->
-    <div class="row no-wrap">
+    <div class="text-subtitle1 q-mt-md">Alignment</div>
+    <div class="row justify-between no-wrap">
       <q-btn
         icon="bi-text-left"
         dense
@@ -84,101 +60,119 @@
         @click="applyStyle('textAlign', 'justify')"
       />
     </div>
+    <div class="q-my-md">
+      <q-select
+        v-model="domStore.font"
+        type="text"
+        label="fonts"
+        dense
+        :options="fontOptions"
+        stack-label
+        filled
+      >
+        <template v-slot:after>
+          <q-btn dense icon="upload" flat @click.stop="dialog = true">
+            <q-tooltip>Upload font</q-tooltip>
+          </q-btn>
+        </template>
+      </q-select>
+    </div>
+    <div>
+      <q-select
+        v-model="fontSize"
+        use-input
+        label="font size"
+        suffix="px"
+        @update:model-value="
+          (v) => {
+            applyStyle('fontSize', v + 'px');
+          }
+        "
+        @input-value="
+          (v) => {
+            if (v) applyStyle('fontSize', v + 'px');
+          }
+        "
+        dense
+        hide-selected
+        fill-input
+        filled
+        :options="fontSizes"
+      />
+    </div>
+    <div>
+      <div class="text-subtitle1 q-mt-md">Colors</div>
+      <div class="row q-mt-md justify-between">
+        <!-- text color -->
+        <q-btn
+          icon="bi-palette"
+          label="text color"
+          dense
+          flat
+          no-caps
+          :style="{ color: textColor }"
+        >
+          <q-menu>
+            <q-color
+              v-model="textColor"
+              @update:model-value="applyStyle('color', textColor)"
+              no-header
+              no-footer
+              class="my-picker"
+            />
+          </q-menu>
+        </q-btn>
 
-    <q-separator vertical class="q-mx-xs" />
+        <!-- background color -->
+        <q-btn
+          icon="bi-paint-bucket"
+          label="background color"
+          dense
+          flat
+          :style="{ backgroundColor: bgColor }"
+          no-caps
+        >
+          <q-menu>
+            <q-color
+              v-model="bgColor"
+              @update:model-value="applyStyle('backgroundColor', bgColor)"
+              no-header
+              no-footer
+              class="my-picker"
+            />
+          </q-menu>
+        </q-btn>
+        <!-- font size -->
+      </div>
+    </div>
+  </div>
 
-    <!-- font -->
-    <q-btn icon="bi-fonts" dense flat size="sm">
-      <q-menu anchor="bottom left" self="top left">
-        <q-list dense style="min-width: 150px">
-          <q-item
-            v-for="font in fontOptions"
-            :key="font"
-            clickable
-            v-close-popup
-            @click="applyStyle('fontFamily', font)"
-          >
-            <q-item-section :style="{ fontFamily: font }">{{
-              font
-            }}</q-item-section>
-          </q-item>
-        </q-list>
-      </q-menu>
-    </q-btn>
-
-    <!-- text color -->
-    <q-btn icon="bi-palette" dense flat size="sm" color="primary">
-      <q-menu>
-        <q-color
-          v-model="textColor"
-          @update:model-value="applyStyle('color', textColor)"
-          no-header
-          no-footer
-          class="my-picker"
-        />
-      </q-menu>
-    </q-btn>
-
-    <!-- background color -->
-    <q-btn icon="bi-paint-bucket" dense flat size="sm">
-      <q-menu>
-        <q-color
-          v-model="bgColor"
-          @update:model-value="applyStyle('backgroundColor', bgColor)"
-          no-header
-          no-footer
-          class="my-picker"
-        />
-      </q-menu>
-    </q-btn>
-    <!-- font size -->
-
-    <!-- boldness weight -->
-    <q-btn icon="bi-type-h1" dense flat size="sm">
-      <q-menu>
-        <q-list dense style="min-width: 100px">
-          <q-item
-            v-for="weight in [100, 200, 300, 400, 500, 600, 700, 800, 900]"
-            :key="weight"
-            clickable
-            v-close-popup
-            @click="applyStyle('fontWeight', weight.toString())"
-          >
-            <q-item-section :style="{ fontWeight: weight }">{{
-              weight
-            }}</q-item-section>
-          </q-item>
-        </q-list>
-      </q-menu>
-    </q-btn>
+  <div class="row q-mt-md justify-between">
+    <div class="text-center">
+      <div>primary color</div>
+      <div class="row justify-center">
+        <q-avatar size="32px" :style="{ cursor: 'pointer' }">
+          <div
+            :style="{ backgroundColor: domStore.primaryColor }"
+            style="width: 100%; height: 100%; border-radius: 50%"
+          ></div>
+          <q-menu>
+            <q-color
+              v-model="domStore.primaryColor"
+              @update:model-value="
+                applyStyle('backgroundColor', domStore.primaryColor)
+              "
+              no-header
+              no-footer
+              class="my-picker"
+            />
+          </q-menu>
+        </q-avatar>
+      </div>
+    </div>
   </div>
   <q-separator spaced />
   <div>
-    <q-item>
-      <q-item-section avatar>
-        <q-avatar color="primary" size="sm" text-color="white" icon="bi-type" />
-      </q-item-section>
-      <q-item-section>
-        <q-item-label>Font size</q-item-label>
-      </q-item-section>
-      <q-item-section side>
-        <q-select
-          style="width: 60px"
-          v-model="fontSize"
-          use-input
-          suffix="px"
-          @input-value="
-            (v) => {
-              applyStyle('font-size', v + 'px');
-            }
-          "
-          dense
-          hide-selected
-          fill-input
-          :options="fontSizes"
-        />
-      </q-item-section>
-    </q-item>
     <q-item clickable @click="domStore.removeSelected">
       <q-item-section avatar>
         <q-avatar color="red" size="sm" text-color="white" icon="delete" />
@@ -208,13 +202,20 @@
       </q-item>
     </div>
   </div>
+  <q-dialog v-model="dialog">
+    <div>
+      <UploadFonts />
+    </div>
+  </q-dialog>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
-import { applyStyle, applyCommand, useDomStore } from "src/stores/dom";
+import { applyStyle, useDomStore } from "src/stores/dom";
 import { watch } from "vue";
+import UploadFonts from "src/components/uploadFonts.vue";
 
+const dialog = ref(false);
 const textColor = ref("#000000");
 const bgColor = ref("#ffffff");
 defineProps<{ additionalInfo?: boolean; isMenu?: boolean }>();
@@ -261,6 +262,8 @@ watch(
   (el) => {
     if (el) {
       fontSize.value = getComputedStyle(el).fontSize;
+      textColor.value = getComputedStyle(el).color;
+      bgColor.value = getComputedStyle(el).backgroundColor;
     } else {
       domStore.additionalMenuitems = { layout: "column", items: [] };
     }

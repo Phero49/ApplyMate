@@ -1,112 +1,181 @@
 <template>
-  <q-page class="q-pa-md">
-    <div class="row q-mb-md">
-      <div class="col-12">
-        <h1 class="text-h5 text-weight-bold q-my-none">Dashboard</h1>
-        <p class="text-body2 text-grey q-mt-xs">
-          Monitor your automated job applications.
+  <q-page class="q-pa-lg">
+    <!-- Header Section -->
+    <div class="row items-center justify-between q-mb-xl">
+      <div class="col-12 col-md-auto">
+        <h1 class="text-h4 text-weight-bold q-my-none text-primary">
+          Dashboard
+        </h1>
+        <p class="text-subtitle1 text-grey-7 q-mt-xs text-weight-light">
+          Your job search at a glance.
         </p>
       </div>
     </div>
 
-    <!-- Analytics Section -->
+    <!-- Productivity Cards Row -->
     <div class="row q-col-gutter-md q-mb-lg">
-      <!-- Autofilled Applications Card -->
-      <div class="col-12 col-md-6">
-        <q-card bordered flat class="stat-card border-outline">
-          <q-card-section>
-            <div class="row items-center q-mb-sm">
-              <q-avatar
-                size="36px"
-                color="primary-light"
-                text-color="primary"
-                icon="auto_awesome"
-                class="q-mr-sm q-pa-xs"
-                rounded
-              />
-              <div class="text-body1 text-weight-medium">
-                Applications Autofilled
+      <!-- Applied Jobs -->
+      <div class="col-12 col-sm-6 col-md-4">
+        <q-card flat bordered>
+          <q-card-section class="q-pa-sm">
+            <div class="row items-center no-wrap justify-between">
+              <div>
+                <div
+                  class="text-caption text-uppercase text-weight-bold text-grey-6 tracking-widest"
+                >
+                  Applied Jobs
+                </div>
+                <div class="text-h5 text-weight-bold text-primary q-mt-xs">
+                  {{ appStore.stats?.appliedJobs ?? 0 }}
+                </div>
               </div>
-            </div>
-            <div class="text-h4 text-weight-bold">128</div>
-            <div class="text-caption text-positive q-mt-xs">
-              <q-icon name="trending_up" /> +14 this week
-            </div>
-          </q-card-section>
-        </q-card>
-      </div>
-
-      <!-- Resumes Generated Card -->
-      <div class="col-12 col-md-6">
-        <q-card bordered flat class="stat-card border-outline">
-          <q-card-section>
-            <div class="row items-center q-mb-sm">
-              <q-avatar
-                size="36px"
-                class="bg-accent-light text-accent q-mr-sm q-pa-xs"
-                icon="description"
-                rounded
+              <q-icon
+                name="send"
+                size="32px"
+                color="primary"
+                class="opacity-4"
               />
-              <div class="text-body1 text-weight-medium">Resumes Generated</div>
             </div>
-            <div class="text-h4 text-weight-bold">12</div>
-            <div class="text-caption text-grey q-mt-xs">
-              Custom PDFs created
+            <div class="text-caption text-grey-7 q-mt-xs">
+              {{ calculateSuccessRate }}% completion rate
             </div>
           </q-card-section>
         </q-card>
       </div>
-    </div>
 
-    <div class="row q-col-gutter-md">
-      <!-- Recent Activity List -->
-      <div class="col-12">
-        <div class="row items-center justify-between q-mb-sm">
-          <h2 class="text-subtitle1 text-weight-bold q-my-none">
-            Recent Activity
-          </h2>
-          <q-btn
-            flat
-            dense
-            no-caps
-            color="primary"
-            label="View all history"
-            size="sm"
-          />
-        </div>
+      <!-- Saved Jobs -->
+      <div class="col-12 col-sm-6 col-md-4">
+        <q-card flat bordered>
+          <q-card-section class="q-pa-sm">
+            <div class="row items-center no-wrap justify-between">
+              <div>
+                <div
+                  class="text-caption text-uppercase text-weight-bold text-grey-6 tracking-widest"
+                >
+                  Saved Jobs
+                </div>
+                <div class="text-h5 text-weight-bold text-secondary q-mt-xs">
+                  {{ appStore.stats?.savedJobs ?? 0 }}
+                </div>
+              </div>
+              <q-icon
+                name="bookmark"
+                size="32px"
+                color="secondary"
+                class="opacity-4"
+              />
+            </div>
+            <div class="text-caption text-grey-7 q-mt-xs">
+              Total jobs bookmarked
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
 
-        <q-card bordered flat class="border-outline border-radius-sm">
-          <q-list separator>
-            <template v-for="activity in recentActivities" :key="activity.id">
-              <q-item class="q-py-sm activity-item">
-                <q-item-section avatar>
-                  <q-avatar
-                    :icon="activity.icon"
-                    :text-color="activity.iconColor"
-                    rounded
-                    font-size="18px"
-                    size="32px"
-                    class="bg-primary-light"
-                  />
-                </q-item-section>
+      <!-- Unapplied Jobs -->
+      <div class="col-12 col-sm-6 col-md-4">
+        <q-card flat bordered>
+          <q-card-section class="q-pa-sm">
+            <div class="row items-center no-wrap justify-between">
+              <div>
+                <div
+                  class="text-caption text-uppercase text-weight-bold text-grey-6 tracking-widest"
+                >
+                  Unapplied Jobs
+                </div>
+                <div class="text-h5 text-weight-bold text-warning q-mt-xs">
+                  {{ appStore.stats?.unappliedJobs ?? 0 }}
+                </div>
+              </div>
+              <q-icon
+                name="pending_actions"
+                size="32px"
+                color="warning"
+                class="opacity-4"
+              />
+            </div>
+            <div class="text-caption text-grey-7 q-mt-xs">
+              Still waiting to apply
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
 
-                <q-item-section>
-                  <q-item-label class="text-weight-medium text-body2">
-                    {{ activity.title }}
-                  </q-item-label>
-                  <q-item-label caption>
-                    {{ activity.description }}
-                  </q-item-label>
-                </q-item-section>
+      <!-- Generated Resumes -->
+      <div class="col-12 col-sm-6 col-md-4">
+        <q-card flat bordered>
+          <q-card-section class="q-pa-sm">
+            <div class="row items-center no-wrap justify-between">
+              <div>
+                <div
+                  class="text-caption text-uppercase text-weight-bold text-grey-6 tracking-widest"
+                >
+                  Generated Resumes
+                </div>
+                <div class="text-h5 text-weight-bold text-accent q-mt-xs">
+                  {{ appStore.stats?.generatedResumes ?? 0 }}
+                </div>
+              </div>
+              <q-icon
+                name="description"
+                size="32px"
+                color="accent"
+                class="opacity-4"
+              />
+            </div>
+            <div class="text-caption text-grey-7 q-mt-xs">Resumes created</div>
+          </q-card-section>
+        </q-card>
+      </div>
 
-                <q-item-section side>
-                  <q-item-label caption>
-                    {{ activity.time }}
-                  </q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-          </q-list>
+      <!-- Saved Links -->
+      <div class="col-12 col-sm-6 col-md-4">
+        <q-card flat bordered>
+          <q-card-section class="q-pa-sm">
+            <div class="row items-center no-wrap justify-between">
+              <div>
+                <div
+                  class="text-caption text-uppercase text-weight-bold text-grey-6 tracking-widest"
+                >
+                  Saved Links
+                </div>
+                <div class="text-h5 text-weight-bold text-info q-mt-xs">
+                  {{ appStore.stats?.savedLinks ?? 0 }}
+                </div>
+              </div>
+              <q-icon name="link" size="32px" color="info" class="opacity-4" />
+            </div>
+            <div class="text-caption text-grey-7 q-mt-xs">
+              Bookmarked resources
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
+
+      <!-- Filled Forms -->
+      <div class="col-12 col-sm-6 col-md-4">
+        <q-card flat bordered>
+          <q-card-section class="q-pa-sm">
+            <div class="row items-center no-wrap justify-between">
+              <div>
+                <div
+                  class="text-caption text-uppercase text-weight-bold text-grey-6 tracking-widest"
+                >
+                  Filled Forms
+                </div>
+                <div class="text-h5 text-weight-bold text-positive q-mt-xs">
+                  {{ appStore.stats?.filledForms ?? 0 }}
+                </div>
+              </div>
+              <q-icon
+                name="assignment_turned_in"
+                size="32px"
+                color="positive"
+                class="opacity-4"
+              />
+            </div>
+            <div class="text-caption text-grey-7 q-mt-xs">Forms autofilled</div>
+          </q-card-section>
         </q-card>
       </div>
     </div>
@@ -114,51 +183,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import { getActivities, addActivity, type ApplicationActivity } from "src/db";
+import { onMounted, computed } from "vue";
+import { useAppContext } from "src/stores/appStore";
 
-const recentActivities = ref<ApplicationActivity[]>([]);
+const appStore = useAppContext();
+
+const calculateSuccessRate = computed(() => {
+  if (!appStore.stats || appStore.stats.savedJobs === 0) return 0;
+  return Math.round(
+    (appStore.stats.appliedJobs / appStore.stats.savedJobs) * 100,
+  );
+});
 
 onMounted(async () => {
-  let activities = await getActivities();
-
-  if (activities.length === 0) {
-    // Seed sample data
-    const sampleData = [
-      {
-        title: "Autofilled Workday Application",
-        description: "Software Engineer role at Google",
-        time: "2 hours ago",
-        icon: "auto_awesome",
-        iconBg: "primary-light",
-        iconColor: "primary",
-      },
-      {
-        title: "Generated Custom Resume",
-        description: 'Using "Modern Tech" template for Frontend role',
-        time: "Yesterday",
-        icon: "picture_as_pdf",
-        iconBg: "primary-light",
-        iconColor: "primary",
-      },
-      {
-        title: "Autofilled Greenhouse Form",
-        description: "Product Manager role at Stripe",
-        time: "2 days ago",
-        icon: "auto_awesome",
-        iconBg: "primary-light",
-        iconColor: "primary",
-      },
-    ];
-
-    for (const item of sampleData) {
-      await addActivity(item);
-    }
-    activities = await getActivities();
-  }
-
-  recentActivities.value = activities.reverse(); // Newest first
+  await appStore.loadStats();
 });
 </script>
 
-<style scoped></style>
+<style scoped lang="scss">
+.tracking-widest {
+  letter-spacing: 0.1em;
+}
+
+.opacity-4 {
+  opacity: 0.4;
+}
+</style>

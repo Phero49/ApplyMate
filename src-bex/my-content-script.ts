@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Importing the file below initializes the content script.
  *
@@ -7,261 +8,299 @@
  */
 import { createBridge } from "#q-app/bex/content";
 import resumeGenerationPrompt from "./assets/prompts/resumeGenerationPrompt.txt?raw";
-// The use of the bridge is optional.
+import { Readability } from "@mozilla/readability";
+import { fillFromAIMappings, prepareFormForAI } from "./utils/utils";
+import {
+  createNotification,
+  type NotificationData,
+} from "./utils/notification";
+
 const bridge = createBridge({ debug: false });
-/**
- * bridge.portName is 'content@<path>-<number>'
- *   where <path> is the relative path of this content script
- *   filename (without extension) from /src-bex
- *   (eg. 'my-content-script', 'subdir/my-script')
- *   and <number> is a unique instance number (1-10000).
- */
 
 declare module "@quasar/app-vite" {
   interface BexEventMap {
     "some.event": [{ someProp: string }, void];
+    "show-notification": [NotificationData, void];
   }
 }
 
-// Hook into the bridge to listen for events sent from the other BEX parts.
-bridge.on("some.event", ({ payload }) => {
-  if (payload.someProp) {
-    // Access a DOM element from here.
-    // Document in this instance is the underlying website the contentScript runs on
-    const el = document.getElementById("some-id");
-    if (el) {
-      el.innerText = "Quasar Rocks!";
+function getGeminiInput(): HTMLElement | null {
+  const el = document.querySelector<HTMLElement>("rich-textarea");
+  if (el) {
+    const input = el.querySelector<HTMLElement>("[contenteditable=true]");
+    if (input) {
+      return input;
+    }
+    const shadowRoot = chrome.dom.openOrClosedShadowRoot(el);
+    if (shadowRoot) {
+      return shadowRoot.querySelector<HTMLElement>("[contenteditable=true]");
     }
   }
-});
+  return null;
+}
 
-/**
- * Leave this AFTER you attach your initial listeners
- * so that the bridge can properly handle them.
- *
- * You can also disconnect from the background script
- * later on by calling bridge.disconnectFromBackground().
- *
- * To check connection status, access bridge.isConnected
- */
-bridge
-  .connectToBackground()
-  .then(() => {
-    console.log("Connected to background");
-  })
-  .catch((err) => {
-    console.error("Failed to connect to background:", err);
-  });
+// Configuration
+const AI_SITES = {
+  "chatgpt.com": () => "[contenteditable=true]",
+  "chat.deepseek.com": () => "textarea",
+  "gemini.google.com": () => "rich-textarea",
+  "chat.qwen.ai": () => "textarea",
+} as const;
 
-let maxRetries = 100;
+/** postMessage type that triggers the main-world watcher for each provider */
+
+const AI_HOSTNAMES = Object.keys(AI_SITES) as Array<keyof typeof AI_SITES>;
+
 let currentSelector = "";
-const waitForselector = (selector: string) => {
+let maxRetries = 100;
+
+function getElementBySelector(selector: string) {
+  if (selector === "rich-textarea") {
+    return getGeminiInput();
+  }
+  return document.querySelector<HTMLElement>(selector);
+}
+
+const waitForSelector = (selector: string) => {
+  console.log(selector, "selector");
   return new Promise((resolve) => {
     currentSelector = selector;
     const interval = setInterval(() => {
-      const element = document.querySelector(selector);
-      if (element) {
+      const element = getElementBySelector(selector);
+      if (element || maxRetries-- === 0) {
         clearInterval(interval);
-        resolve(element);
-      }
-      maxRetries--;
-      if (maxRetries === 0) {
-        clearInterval(interval);
-        resolve(null);
+        resolve(element || null);
       }
     }, 100);
   });
 };
 
 const fillInput = (selector: string, value: string) => {
-  const element = document.querySelector<HTMLTextAreaElement>(selector);
-  if (element) {
-    //check if element is textarea
-    if (element.tagName === "TEXTAREA") {
-      element.value = value;
-      element.dispatchEvent(new Event("input", { bubbles: true }));
-    }
-    //check if element is contenteditable
-    else if (element.getAttribute("contenteditable") === "true") {
-      element.innerText = value;
-      element.dispatchEvent(new Event("input", { bubbles: true }));
-    }
+  const element = getElementBySelector(selector);
+  if (!element) return;
+
+  if (element instanceof HTMLTextAreaElement) {
+    element.value = value;
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+  } else if (element.getAttribute("contenteditable") === "true") {
+    element.innerText = value;
+    element.dispatchEvent(new Event("input", { bubbles: true }));
   }
 };
 
-const onPageLoaded = () => {
+const getPageInfo = () => {
+  const icon = document.querySelector("link[rel='icon']")?.getAttribute("href");
+  const url = new URL(icon || "", location.origin).href;
+  return {
+    url: window.location.href,
+    title: document.title,
+    port: bridge.portName,
+    favIconUrl: url,
+  };
+};
+
+// Initialize AI site detection
+const initializeAISite = async () => {
+  if (!AI_HOSTNAMES.includes(window.location.hostname as any)) return;
+
+  const selector =
+    AI_SITES[window.location.hostname as keyof typeof AI_SITES]();
+  await waitForSelector(selector);
+  console.log("send to bg");
   void bridge.send({
     event: "aiSiteLoaded",
-    payload: {
-      url: window.location.href,
-      title: document.title,
-      port: bridge.portName,
-      favIconUrl: document
-        .querySelector("link[rel='icon']")
-        ?.getAttribute("href"),
-    },
+    payload: getPageInfo(),
     to: "background",
   });
 };
-// eslint-disable-next-line @typescript-eslint/no-misused-promises
-window.addEventListener("load", async () => {
-  if (
-    [
-      "chatgpt.com",
-      "chat.deepseek.com",
-      "gemini.google.com",
-      "chat.qwen.ai",
-    ].includes(window.location.hostname)
-  ) {
-    switch (window.location.hostname) {
-      case "chatgpt.com":
-        await waitForselector("[contenteditable=true]");
-        onPageLoaded();
-        break;
 
-      case "chat.deepseek.com":
-        await waitForselector("textarea");
-        debugger;
-        onPageLoaded();
-        break;
+// Message handlers
 
-      case "gemini.google.com":
-        await waitForselector("rich-textarea");
-        onPageLoaded();
-        break;
+const messageListeners: Record<string, (data?: any) => any> = {
+  getCurrentOpenedTab: getPageInfo,
 
-      case "chat.qwen.ai":
-        await waitForselector("textarea");
-        onPageLoaded();
-        break;
-    }
+  getJobDetails: () => {
+    const clone = document.body.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll("script").forEach((script) => script.remove());
+    clone.querySelectorAll("style").forEach((style) => style.remove());
+    clone.querySelectorAll("header").forEach((header) => header.remove());
+    clone.querySelectorAll("footer").forEach((header) => header.remove());
+    clone
+      .querySelectorAll("[style*='display: none']")
+      .forEach((el) => el.remove());
+    clone.querySelectorAll("button").forEach((btn) => btn.remove());
+    return {
+      jobDetails: clone.textContent
+        ?.replace(/ {2} +/g, " ")
+        .replace(/^\n.\n/g, ""),
+      url: location.href,
+      title: document.title,
+    };
+  },
+
+  getCurrentDocumentBodyText: () => {
+    const clone = document.cloneNode(true);
+    const readability = new Readability(clone as Document).parse();
+    console.log(readability);
+    return {
+      data: {
+        title: readability?.title,
+        textContent: readability?.textContent,
+      },
+      window: {
+        ...getPageInfo(),
+      },
+    };
+  },
+
+  getFormMappings: () => {
+    return prepareFormForAI().cleanedHTML;
+  },
+  fillForm: ({ payload }) => {
+    fillFromAIMappings(payload);
+  },
+  showNotification: ({ payload }) => {
+    createNotification(payload);
+    console.log(payload, "notification");
+  },
+  chatProxy: ({ payload }) => {
+    const { message } = payload;
+    fillInput(currentSelector, message);
+    watchAiGeneration((data, text) => {
+      void bridge.send({
+        event: "chatProxyResponse",
+        payload: {
+          data,
+          text,
+        },
+        to: "background",
+      });
+      void bridge.send({
+        event: "resumeGenerated",
+        payload: {
+          resume: data,
+          url: payload.url,
+          chatUrl: window.location.href,
+          title: payload.title,
+        },
+        to: "background",
+      });
+    });
+    setTimeout(() => {
+      dispatchEnter(document.querySelector(currentSelector) as HTMLElement);
+    }, 2000);
+  },
+};
+// Chrome runtime message handler
+chrome.runtime.onMessage.addListener((message, sender, response) => {
+  const listener = messageListeners[message.type];
+  if (listener) {
+    response(listener(message));
   }
 });
 
 bridge.on("generate-resume", ({ payload }) => {
-  const prompt = `
-   ${resumeGenerationPrompt}
-   
-   USER'S RAW DATA:
-   ${payload.resumeData}
-
-   TARGET JOB DESCRIPTION:
-   ${payload.jobDescription}
-
-   Now, generate the optimized resume using only the user data provided and the job description.
-   `;
-
+  const prompt = `${resumeGenerationPrompt}\n\nUSER'S RAW DATA:\n${payload.resumeData}\n\nTARGET JOB DESCRIPTION:\n${payload.jobDescription}\n\nNow, generate the optimized resume using only the user data provided and the job description.`;
   fillInput(currentSelector, prompt);
-  watchAiGeneration();
+  watchAiGeneration((data) => {
+    console.log(data, "data resume");
+    void bridge.send({
+      event: "resumeGenerated",
+      payload: {
+        resume: data,
+        url: payload.url,
+        chatUrl: window.location.href,
+        title: payload.title,
+      },
+      to: "background",
+    });
+  });
+  setTimeout(() => {
+    dispatchEnter(document.querySelector(currentSelector) as HTMLElement);
+  }, 2000);
 });
 
-bridge.on("getDomContents", () => {
-  console.log("bex can listen");
+bridge.on("extract-job-details", ({ payload }) => {
+  // TODO: Implement job details extraction
+  fillInput(currentSelector, payload);
+  watchAiGeneration((data) => {
+    console.log(data, "data extract");
+    void bridge.send({
+      event: "extract-job-details",
+      to: "background",
+      payload: data,
+    });
+  });
+  setTimeout(() => {
+    dispatchEnter(document.querySelector(currentSelector) as HTMLElement);
+  }, 2000);
 });
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log(request);
-  if (request.event === "getJobDetails") {
-    sendResponse({ jobDetails: document.body.textContent });
-  }
-});
-
-// let retries = 0;
-// const MAX_RETRIES = 100;
-
-// function watchDeepSeek(event: string) {
-//   const container = document.querySelector(".ds-virtual-list-visible-items");
-//   if (container == null) {
-//     setTimeout(() => {
-//       watchDeepSeek(event);
-//     }, 4000);
-//     return;
-//   }
-//   let currentChildren = 0
-//   const observer = new MutationObserver(() => {
-
-//     const elements = Array.from(document.querySelectorAll(".ds-markdown"));
-//     if (currentChildren > 0 && elements.length == currentChildren) {
-//       return
-//     }
-//     currentChildren = elements.length
-//     if (elements.length === 0) {
-//       if (retries >= MAX_RETRIES) return;
-
-//       retries++;
-
-//       setTimeout(() => {
-//         watchDeepSeek(event);
-//       }, 5000);
-
-//       return;
-//     }
-//     retries = 0;
-
-//     const lastElement = elements.at(-1);
-//     console.log(lastElement);
-//     debugger;
-//     if (!lastElement) return;
-
-//     const getjson = (maxRetries: number) => {
-//       const codeBlock = lastElement.querySelector("code");
-//       if (codeBlock) {
-//         const text = codeBlock.textContent.trim();
-//         try {
-//           const json = JSON.parse(text);
-//           console.log(json);
-//           void bridge.send({ event, to: "background", payload: json });
-//         } catch (_) {
-//           console.log("invalid json try again");
-//           if (maxRetries === 0) return;
-//           setTimeout(() => {
-//             getjson(maxRetries - 1);
-//           }, 4000);
-//         }
-//         console.log(text);
-//       }
-//     };
-//     getjson(15);
-//   });
-//   observer.observe(container, { childList: true, subtree: true });
-// }
-
-window.addEventListener("deepseek-chat-ready", (event) => {
-  console.log(event);
-});
-
-function watchAiGeneration() {
-  switch (window.location.hostname) {
-    case "chatgpt.com":
-      break;
-
-    case "chat.deepseek.com": {
-      window.postMessage(
-        { type: "watchChatDeepSeekResponse" },
-        location.origin,
-      );
-      // const event = new CustomEvent("watchChatDeepSeekResponse");
-      // window.dispatchEvent(event);
-      window.addEventListener("message", (event) => {
-        console.log(event);
-        if (event.data.type === "type") {
-          //extract json from md code block
-          const json = event.data.text.split("```json")[1].split("```")[0];
-          console.log(json, "json");
-        }
-      });
-      console.log("watchChatDeepSeekResponse");
-      break;
-    }
-
-    case "gemini.google.com":
-      void waitForselector("rich-textarea");
-      onPageLoaded();
-      break;
-
-    case "chat.qwen.ai":
-      void waitForselector("textarea");
-      onPageLoaded();
-      break;
-  }
+function dispatchEnter(element: HTMLElement) {
+  element.dispatchEvent(
+    new KeyboardEvent("keydown", {
+      key: "Enter",
+      code: "Enter",
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    }),
+  );
 }
+
+bridge.on("fillForm", ({ payload }) => {
+  fillInput(currentSelector, payload.html);
+  watchAiGeneration((data) => {
+    void bridge.send({
+      event: "formFilled",
+      payload: data,
+      to: "background",
+    });
+  });
+  setTimeout(() => {
+    dispatchEnter(document.querySelector(currentSelector) as HTMLElement);
+  }, 2000);
+});
+
+bridge.on("showNotification", ({ payload }) => {
+  createNotification(payload);
+});
+
+// Watch AI generation
+function watchAiGeneration(callback: (data: any, text?: string[]) => void) {
+  const hostname = window.location.hostname;
+
+  // // Providers that need DOM-only polling don't use the main-world bridge
+  // const DOM_ONLY_PROVIDERS = ["chatgpt.com", "gemini.google.com"];
+
+  // if (!DOM_ONLY_PROVIDERS.includes(hostname)) {
+  //   console.warn("[ApplyMate] No watcher configured for", hostname);
+  //   return;
+  // }
+
+  // Trigger the main-world interceptor for this provider
+  window.postMessage({ type: "listenToAi" }, location.origin);
+
+  window.addEventListener("message", (event) => {
+    if (event.data.type === "chat-response-ready") {
+      const parts = event.data.detail.text.split(/```(?:json)+/);
+      const secondPart = parts.length > 1 ? parts[1].split("```") : null;
+      const jsonString = secondPart?.[0] || null;
+      const noneCodeBlock = [parts[0], secondPart?.[1]];
+      const json = JSON.parse(jsonString);
+      callback(json, noneCodeBlock);
+    }
+  });
+
+  console.log("[ApplyMate] watchAiGeneration started for", hostname);
+}
+
+// Bridge connection
+bridge
+  .connectToBackground()
+  .then(() => console.log("Connected to background"))
+  .catch((err) => console.error("Failed to connect to background:", err));
+
+// Initialize
+// eslint-disable-next-line @typescript-eslint/no-misused-promises
+window.addEventListener("load", initializeAISite);

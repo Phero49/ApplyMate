@@ -1,6 +1,6 @@
 <template>
   <q-layout view="hHh LpR fFf">
-    <q-header>
+    <q-header bordered class="bg-white text-black">
       <q-toolbar>
         <q-btn
           flat
@@ -11,15 +11,35 @@
         />
         <q-toolbar-title>Resume Builder</q-toolbar-title>
         <q-btn
-          label="sections"
-          flat
-          @click="rightDrawerOpen = !rightDrawerOpen"
-        />
+          icon="undo"
+          unelevated
+          outline
+          color="grey-10"
+          @click="domStore.undo()"
+          :disable="domStore.undoStack.length === 0"
+        >
+          <q-tooltip>Undo (Ctrl+Z)</q-tooltip>
+        </q-btn>
+        <q-separator vertical spaced />
+
+        <q-btn
+          icon="redo"
+          unelevated
+          outline
+          color="grey-10"
+          @click="domStore.redo()"
+          :disable="domStore.redoStack.length === 0"
+        >
+          <q-tooltip>Redo (Ctrl+Y)</q-tooltip>
+        </q-btn>
+        <q-separator vertical spaced />
+        <q-btn label="Export to PDF" color="black" @click="exportToPDF" />
       </q-toolbar>
     </q-header>
-    <q-drawer show-if-above v-model="leftDrawerOpen" side="left">
+    <q-drawer show-if-above v-model="leftDrawerOpen" :width="340" side="left">
       <q-scroll-area class="fit">
-        <div class="q-pa-md">
+        <resume-builder-editor />
+        <!-- <div class="q-pa-md">
           <div class="q-py-md text-subtitle1">Layout</div>
           <div class="row justify-between">
             <q-btn
@@ -83,59 +103,31 @@
             label="Show Section Lines"
             color="primary"
           />
-        </div>
+        </div> -->
 
-        <format-text />
+        <!-- <format-text /> -->
       </q-scroll-area>
     </q-drawer>
-    <q-drawer
-      show-if-above
-      v-model="rightDrawerOpen"
-      bordered
-      :width="230"
-      flat
-      side="right"
-    >
-      <q-scroll-area class="fit">
-        <div
-          class="text-center text-grey-5 q-py-md text-subtitle1 text-bold text-uppercase"
-        >
-          Resume sections
-        </div>
-        <q-separator />
-        <q-list dense>
-          <q-item
-            class="text-capitalize text-grey"
-            v-for="(section, key) in sections"
-            :key="key"
-            clickable
-            v-close-popup
-          >
-            <q-item-section>
-              <q-item-label class="text-subtitle2">{{ key }}</q-item-label>
-            </q-item-section>
-            <q-item-section side>
-              <q-checkbox v-model="sections[key]" />
-            </q-item-section>
-          </q-item>
-        </q-list>
-      </q-scroll-area>
-    </q-drawer>
+
     <q-page-container>
       <q-page>
         <div>
-          <div class="bg-grey-4 text-black row justify-center">
+          <div class="bg-grey-4 q-pt-md text-black row justify-center">
             <div
               class="bg-white q-pa-lg resume-root"
               style="width: 210mm"
               :style="{ fontFamily: selectedFont }"
             >
-              <div v-if="layout == 'vertical'">
+              <div v-if="currentSelectedLayout.name == 'vertical'">
                 <div v-for="(value, key) in sections" :key="key">
-                  <component v-if="value" :is="getComponents(key)"></component>
+                  <div></div>
+                  <component
+                    v-if="value.include"
+                    :is="getComponents(key)"
+                  ></component>
                 </div>
               </div>
-              <div v-if="layout == 'twoColumn'">
+              <div v-if="currentSelectedLayout.name == 'two columns'">
                 <div>
                   <component :is="getComponents('header')"></component
                   ><component :is="getComponents('contact')"></component>
@@ -143,12 +135,16 @@
                 <div
                   class="row"
                   :class="{
-                    reverse: layout == 'twoColumn' && columnSide == 'right',
+                    reverse: currentSelectedLayout.columnSide == 'right',
                   }"
                 >
                   <div
                     class="col-4"
-                    :class="[{ 'offset-1': columnSide == 'right' }]"
+                    :class="[
+                      {
+                        'offset-1': currentSelectedLayout.name == 'two columns',
+                      },
+                    ]"
                   >
                     <div
                       v-for="value in [
@@ -169,7 +165,11 @@
                   </div>
                   <div
                     class="col-7"
-                    :class="[{ 'offset-1': columnSide == 'left' }]"
+                    :class="[
+                      {
+                        'offset-1': currentSelectedLayout.columnSide == 'left',
+                      },
+                    ]"
                   >
                     <div
                       v-for="value in [
@@ -197,11 +197,6 @@
 </template>
 
 <script setup lang="ts">
-import {
-  biLayoutSidebar,
-  biLayoutSidebarReverse,
-  biSquare,
-} from "@quasar/extras/bootstrap-icons";
 import CertificationsSection from "src/components/resumeBuilder/CertificationsSection.vue";
 import ContactSection from "src/components/resumeBuilder/ContactSection.vue";
 import EducationSection from "src/components/resumeBuilder/EducationSection.vue";
@@ -214,27 +209,21 @@ import VolunteeringSection from "src/components/resumeBuilder/volunteeringSectio
 import ReferencesSection from "src/components/resumeBuilder/ReferencesSection.vue";
 import SkillsSection from "src/components/resumeBuilder/SkillsSection.vue";
 import SummarySection from "src/components/resumeBuilder/summarySection.vue";
-import { reactive, ref } from "vue";
-import FormatText from "src/components/resumeBuilder/formatText.vue";
+import { ref } from "vue";
+import { useAppContext } from "src/stores/appStore";
+import { onMounted } from "vue";
+import ResumeBuilderEditor from "src/components/ResumeBuilderEditor.vue";
+import { currentSelectedLayout, sections } from "src/composable/resumeBuilder";
+import { useDomStore } from "src/stores/dom";
 
+import { useRoute } from "vue-router";
+import { getGeneratedResume } from "src/db";
+import { exportPdf } from "../composable/resumeBuilder";
 //const templates = ref();
-const layout = ref<"vertical" | "twoColumn">("vertical");
-const columnSide = ref<"left" | "right">("left");
-
+const domStore = useDomStore();
 const selectedFont = ref("Roboto");
-const fontOptions = [
-  "Roboto",
-  "Arial",
-  "Times New Roman",
-  "Courier New",
-  "Verdana",
-  "Georgia",
-  "Helvetica",
-  "Trebuchet MS",
-];
-const showSectionLines = ref(true);
+const appStore = useAppContext();
 const leftDrawerOpen = ref(true);
-const rightDrawerOpen = ref(true);
 const getComponents = (key: string) => {
   switch (key) {
     case "header":
@@ -266,28 +255,20 @@ const getComponents = (key: string) => {
   }
 };
 
-const sections = reactive({
-  header: true,
-  contact: true,
-  summary: true,
-  experience: true,
-  education: true,
-  skills: true,
-  certifications: false,
-  projects: false,
-  awards: false,
-  languages: true,
-  volunteering: false,
-  references: false,
-});
-
-import { useAppContext } from "src/stores/appStore";
-import { onMounted } from "vue";
 const store = useAppContext();
-
+const route = useRoute();
+const key = route.query.href;
 onMounted(async () => {
   await store.loadProfile();
+  if (key) {
+    const resumeData = await getGeneratedResume(key as string);
+    appStore.resume = resumeData.resume;
+  }
 });
+
+const exportToPDF = () => {
+  exportPdf();
+};
 </script>
 
 <style scoped></style>

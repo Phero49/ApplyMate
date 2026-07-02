@@ -1,20 +1,15 @@
 <template>
   <div class="q-py-sm">
-    <ContentItem>
-      <div
-        class="text-subtitle1 text-uppercase text-bold text-primary q-pa-xs"
-      >
+    <ContentItem itemName="summary-header">
+      <div class="text-subtitle1 text-uppercase text-bold q-pa-xs">
         Professional Summary
       </div>
       <q-separator class="bg-primary" style="height: 2px" />
     </ContentItem>
 
-    <ContentItem>
+    <ContentItem itemName="summary" section="summary">
       <div class="q-pa-xs text-body2">
-        Determined and highly motivated professional with extensive experience
-        in software development and a keen interest in learning new
-        technologies. Adept at solving complex problems and delivering
-        high-quality web applications.
+        {{ appStore.resume.summary }}
       </div>
     </ContentItem>
   </div>
@@ -22,6 +17,8 @@
 
 <script setup lang="ts">
 import ContentItem from "./ContentItem.vue";
+import { useAppContext } from "src/stores/appStore";
+const appStore = useAppContext();
 </script>
 
 <style scoped></style>

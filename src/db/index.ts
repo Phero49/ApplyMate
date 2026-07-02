@@ -95,6 +95,9 @@ export interface SavedJob {
   icon: string;
   closeDate: string;
   savedAt: string;
+  summary: string;
+  company: string;
+  applied: boolean;
 }
 export interface AppNotification {
   id: number;
@@ -114,7 +117,7 @@ export interface ApplyMateDB extends IDBPDatabase {
 }
 
 const DB_NAME = "applymate_db";
-const DB_VERSION = 1;
+const DB_VERSION = 5;
 
 export async function initDB() {
   return openDB(DB_NAME, DB_VERSION, {
@@ -122,20 +125,32 @@ export async function initDB() {
       if (!db.objectStoreNames.contains("profile")) {
         db.createObjectStore("profile", { keyPath: "id" });
       }
-      if (!db.objectStoreNames.contains("activities")) {
-        db.createObjectStore("activities", {
-          keyPath: "id",
-          autoIncrement: true,
-        });
-      }
       if (!db.objectStoreNames.contains("links")) {
-        db.createObjectStore("links", { keyPath: "id", autoIncrement: true });
+        const store = db.createObjectStore("links", { keyPath: "url" });
+        store.createIndex("url", "url");
+      }
+      if (!db.objectStoreNames.contains("savedJobs")) {
+        const store = db.createObjectStore("savedJobs", { keyPath: "url" });
+        store.createIndex("url", "url");
+        store.createIndex("title", "title");
+        store.createIndex("company", "company");
+      }
+      if (!db.objectStoreNames.contains("filledForms")) {
+        db.createObjectStore("filledForms", { keyPath: "url" });
+      }
+      if (!db.objectStoreNames.contains("generatedResumes")) {
+        db.createObjectStore("generatedResumes", {
+          keyPath: "url",
+        });
       }
       if (!db.objectStoreNames.contains("notifications")) {
         db.createObjectStore("notifications", {
           keyPath: "id",
           autoIncrement: true,
         });
+      }
+      if (!db.objectStoreNames.contains("fonts")) {
+        db.createObjectStore("fonts", { keyPath: "name" });
       }
     },
   });
@@ -152,21 +167,10 @@ export async function getProfile(): Promise<UserProfile | undefined> {
   return db.get("profile", "current");
 }
 
-// Activity Actions
-export async function addActivity(activity: Omit<ApplicationActivity, "id">) {
-  const db = await initDB();
-  return db.add("activities", activity as any);
-}
-
-export async function getActivities(): Promise<ApplicationActivity[]> {
-  const db = await initDB();
-  return db.getAll("activities");
-}
-
 // Link Actions
 export async function addSavedLink(link: Omit<SavedLink, "id">) {
   const db = await initDB();
-  return db.add("links", link as any);
+  return db.put("links", link as any);
 }
 
 export async function getSavedLinks(): Promise<SavedLink[]> {
@@ -193,15 +197,131 @@ export async function getNotifications(): Promise<AppNotification[]> {
 // Saved Job Actions
 export async function addSavedJob(job: Omit<SavedJob, "id">) {
   const db = await initDB();
-  return db.add("savedJobs", job as any);
+  return db.put("savedJobs", job as any);
 }
 
 export async function getSavedJobs(): Promise<SavedJob[]> {
   const db = await initDB();
-  return db.getAll("savedJobs");
+  const data = await db.getAll("savedJobs");
+  console.log(data);
+  return data;
 }
 
-export async function deleteSavedJob(id: number) {
+export async function deleteSavedJob(url: string) {
   const db = await initDB();
-  return db.delete("savedJobs", id);
+  return db.delete("savedJobs", url);
+}
+
+export interface Stats {
+  appliedJobs: number;
+  savedJobs: number;
+  generatedResumes: number;
+  savedLinks: number;
+  filledForms: number;
+  unappliedJobs: number;
+}
+export async function getStats(): Promise<Stats> {
+  const db = await initDB();
+  const tx = db.transaction(
+    ["savedJobs", "links", "filledForms", "generatedResumes"],
+    "readonly",
+  );
+
+  const jobsStore = tx.objectStore("savedJobs");
+  const linksStore = tx.objectStore("links");
+  const formsStore = tx.objectStore("filledForms");
+  const resumesStore = tx.objectStore("generatedResumes");
+
+  const linksCount = await linksStore.count();
+  const formsCount = await formsStore.count();
+  const jobs = await jobsStore.getAll();
+
+  const appliedJobs = jobs.filter((j: any) => j.applied).length;
+  const savedJobs = jobs.length;
+  const unappliedJobs = savedJobs - appliedJobs;
+
+  const resumes = (await resumesStore.getAll()).filter((r: any) => !r.draft);
+  const generatedResumes = resumes.length;
+
+  return {
+    appliedJobs,
+    savedJobs,
+    generatedResumes,
+    savedLinks: linksCount,
+    filledForms: formsCount,
+    unappliedJobs,
+  };
+}
+
+export async function saveGeneratedResume(resume: any) {
+  const db = await initDB();
+  return db.put("generatedResumes", {
+    ...resume,
+    createdAt: new Date().toISOString(),
+  });
+}
+
+export async function getGeneratedResume(url: string) {
+  const db = await initDB();
+  return db.get("generatedResumes", url);
+}
+
+export async function getAllGeneratedResumes() {
+  const db = await initDB();
+  const data = await db.getAll("generatedResumes");
+  return data.map((v) => ({
+    url: v.url,
+    title: v.title,
+    headline: v.resume.headline,
+    createdAt: v.createdAt || null,
+  }));
+}
+
+export interface FontDefinition {
+  name: string;
+  normal: Blob;
+  bold?: Blob;
+  italics?: Blob;
+  bolditalics?: Blob;
+}
+
+export async function saveFont(font: FontDefinition) {
+  const db = await initDB();
+  return db.put("fonts", font);
+}
+
+export async function getFonts(): Promise<FontDefinition[]> {
+  const db = await initDB();
+  return db.getAll("fonts");
+}
+
+export async function getFontAsUrl(name: string) {
+  const db = await initDB();
+  const font = await db.get("fonts", name);
+  if (!font) return null;
+  console.log(font);
+  return {
+    normal: `https://fonts.applyMate.com/${font.normal.name}?font-name=${name}`,
+    bold: font.bold
+      ? `https://fonts.applyMate.com/${font.bold.name}?font-name=${name}`
+      : undefined,
+    italics: font.italics
+      ? `https://fonts.applyMate.com/${font.italics.name}?font-name=${name}`
+      : undefined,
+    bolditalics: font.bolditalics
+      ? `https://fonts.applyMate.com/${font.bolditalics.name}?font-name=${name}`
+      : undefined,
+  };
+}
+export async function getFontData(name: string, file: string) {
+  const db = await initDB();
+  const font = await db.get("fonts", name);
+  if (!font) return null;
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+  const f = (Object.values(font) as File[]).find((v) => v.name === file);
+  return f;
+}
+export async function deleteFont(name: string) {
+  const db = await initDB();
+  return db.delete("fonts", name);
 }
