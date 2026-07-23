@@ -11,72 +11,8 @@
       />
       <q-separator />
       <div class="text-center text-subtitle1 q-py-md">Select Default AI</div>
-      <div class="">
-        <div class="row justify-between">
-          <div class="row">
-            <div
-              style="width: 50px; height: 50px; cursor: pointer"
-              @click="defaultAI = 'chatgpt'"
-            >
-              <q-img :src="chatgptIcon">
-                <div class="absolute-full flex flex-center">
-                  <q-icon
-                    v-if="defaultAI === 'chatgpt'"
-                    :name="symRoundedCheckCircle"
-                    color="red"
-                    size="30px"
-                  />
-                </div>
-              </q-img>
-            </div>
-          </div>
-          <div
-            style="width: 50px; height: 50px; cursor: pointer"
-            @click="defaultAI = 'deepseek'"
-          >
-            <q-img :src="deepseekIcon">
-              <div class="absolute-full flex flex-center">
-                <q-icon
-                  v-if="defaultAI === 'deepseek'"
-                  :name="symRoundedCheckCircle"
-                  color="primary"
-                  size="24px"
-                />
-              </div>
-            </q-img>
-          </div>
-          <div
-            style="width: 50px; height: 50px; cursor: pointer"
-            @click="defaultAI = 'gemini'"
-          >
-            <q-img :src="geminiIcon">
-              <div class="absolute-full flex flex-center">
-                <q-icon
-                  v-if="defaultAI === 'gemini'"
-                  :name="symRoundedCheckCircle"
-                  color="primary"
-                  size="24px"
-                />
-              </div>
-            </q-img>
-          </div>
-          <div
-            style="width: 50px; height: 50px; cursor: pointer"
-            @click="defaultAI = 'qwen'"
-          >
-            <q-img :src="qwenIcon">
-              <div class="absolute-full flex flex-center">
-                <q-icon
-                  v-if="defaultAI === 'qwen'"
-                  :name="symRoundedCheckCircle"
-                  color="primary"
-                  size="24px"
-                />
-              </div>
-            </q-img>
-          </div>
-        </div>
-      </div>
+      <select-ai-models v-model:defaultAI="defaultAI" />
+   
       <q-separator spaced class="q-my-md" />
 
       <q-list separator class="text-capitalize">
@@ -106,12 +42,10 @@ import {
 } from "@quasar/extras/material-symbols-rounded";
 import { useQuasar } from "quasar";
 import { addSavedLink, getProfile } from "src/db";
-import chatgptIcon from "../assets/chatgpt-icon.svg";
-import deepseekIcon from "../assets/deepseek-logo-icon.svg";
-import geminiIcon from "../assets/google-gemini-icon.svg";
-import qwenIcon from "../assets/qwen-ai-icon.svg";
+
 import { ref } from "vue";
 import { type BexBridge } from "@quasar/app-vite";
+import SelectAiModels from "src/components/SelectAiModels.vue";
 
 const $q = useQuasar();
 const bex = $q.bex as BexBridge;

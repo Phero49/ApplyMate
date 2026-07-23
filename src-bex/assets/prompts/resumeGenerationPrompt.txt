@@ -88,7 +88,8 @@ Follow these rules strictly:
 }
     ```
 
-### important note:
+### important notes:
 1. The resume must always be provided as a valid JSON object enclosed within a Markdown code block.
 2. Do not output plain JSON or any text that merely looks like JSON — it must be explicitly wrapped in a Markdown code block with the json language identifier.
 3. Ensure the JSON structure is fully valid (e.g., proper quoting, no trailing commas, correct nesting) before rendering.
+3. if the response contains multiple  json code blocks always put the json resume first else it will cause system failure

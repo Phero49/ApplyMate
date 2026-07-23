@@ -4,11 +4,15 @@
     <div class="page-header q-mb-xl">
       <div class="row items-center justify-between">
         <div>
-          <h4 class="text-white q-my-none q-mb-xs" style="font-weight: 700; letter-spacing: -0.5px">
+          <h4
+            class="text-white q-my-none q-mb-xs"
+            style="font-weight: 700; letter-spacing: -0.5px"
+          >
             Generated Resumes
           </h4>
           <p class="text-grey-5 q-my-none text-body1">
-            {{ resumes.length }} resume{{ resumes.length !== 1 ? 's' : '' }} created
+            {{ resumes.length }} resume{{ resumes.length !== 1 ? "s" : "" }}
+            created
           </p>
         </div>
         <q-btn
@@ -17,7 +21,7 @@
           icon="add"
           label="New Resume"
           class="new-resume-btn"
-          @click="$router.push('/app/resume-builder')"
+          @click="createNewResume"
         />
       </div>
     </div>
@@ -27,7 +31,12 @@
       <div v-for="i in 4" :key="i" class="col-12 col-sm-6 col-md-4 col-lg-3">
         <q-card class="resume-card-skeleton" flat>
           <q-card-section>
-            <q-skeleton type="rect" height="120px" class="q-mb-md" style="border-radius: 8px" />
+            <q-skeleton
+              type="rect"
+              height="120px"
+              class="q-mb-md"
+              style="border-radius: 8px"
+            />
             <q-skeleton type="text" width="80%" class="q-mb-sm" />
             <q-skeleton type="text" width="60%" class="q-mb-md" />
             <q-skeleton type="text" width="40%" />
@@ -37,13 +46,22 @@
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="resumes.length === 0" class="empty-state column items-center justify-center">
+    <div
+      v-else-if="resumes.length === 0"
+      class="empty-state column items-center justify-center"
+    >
       <div class="empty-icon-wrapper q-mb-lg">
         <q-icon name="description" size="64px" color="grey-7" />
       </div>
-      <h5 class="text-grey-4 q-my-sm" style="font-weight: 600">No resumes yet</h5>
-      <p class="text-grey-6 q-mt-none q-mb-lg text-center" style="max-width: 400px">
-        Generate tailored resumes from saved job listings to stand out in your applications.
+      <h5 class="text-grey-4 q-my-sm" style="font-weight: 600">
+        No resumes yet
+      </h5>
+      <p
+        class="text-grey-6 q-mt-none q-mb-lg text-center"
+        style="max-width: 400px"
+      >
+        Generate tailored resumes from saved job listings to stand out in your
+        applications.
       </p>
       <q-btn
         unelevated
@@ -51,7 +69,7 @@
         icon="add"
         label="Create Your First Resume"
         class="new-resume-btn"
-        @click="$router.push('/app/resume-builder')"
+        @click="createNewResume"
       />
     </div>
 
@@ -63,11 +81,7 @@
         class="col-12 col-sm-6 col-md-4 col-lg-3"
         :style="{ animationDelay: `${index * 60}ms` }"
       >
-        <q-card
-          class="resume-card"
-          flat
-          @click="openResume(resume.url)"
-        >
+        <q-card class="resume-card" flat @click="openResume(resume.url)">
           <!-- Card Top: Document Preview -->
           <div class="card-preview">
             <div class="preview-lines">
@@ -90,7 +104,7 @@
           <!-- Card Body -->
           <q-card-section class="card-body">
             <div class="headline-text ellipsis-2-lines">
-              {{ resume.headline || 'Untitled Resume' }}
+              {{ resume.headline || "Untitled Resume" }}
             </div>
 
             <div v-if="resume.title" class="title-text ellipsis q-mt-xs">
@@ -98,7 +112,12 @@
             </div>
 
             <div class="meta-row q-mt-md">
-              <q-icon name="schedule" size="14px" color="grey-6" class="q-mr-xs" />
+              <q-icon
+                name="schedule"
+                size="14px"
+                color="grey-6"
+                class="q-mr-xs"
+              />
               <span class="date-text">{{ formatDate(resume.createdAt) }}</span>
             </div>
           </q-card-section>
@@ -135,11 +154,17 @@
     <q-dialog v-model="deleteDialog" persistent>
       <q-card class="delete-dialog" style="min-width: 360px">
         <q-card-section class="row items-center q-pb-none">
-          <q-avatar icon="warning" color="negative" text-color="white" size="42px" />
+          <q-avatar
+            icon="warning"
+            color="negative"
+            text-color="white"
+            size="42px"
+          />
           <span class="q-ml-md text-h6 text-white">Delete Resume</span>
         </q-card-section>
         <q-card-section class="text-grey-4">
-          Are you sure you want to delete <strong class="text-white">"{{ resumeToDelete?.headline }}"</strong>?
+          Are you sure you want to delete
+          <strong class="text-white">"{{ resumeToDelete?.headline }}"</strong>?
           This action cannot be undone.
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md">
@@ -158,10 +183,12 @@
 </template>
 
 <script setup lang="ts">
-import { getAllGeneratedResumes, initDB } from 'src/db';
-import { onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { useQuasar } from 'quasar';
+import { getAllGeneratedResumes, initDB } from "src/db";
+import { onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
+import { useQuasar } from "quasar";
+import { aiSites } from "app/src-bex/utils/utils";
+import type { BexBridge } from "@quasar/app-vite";
 
 interface GeneratedResume {
   url: string;
@@ -172,6 +199,7 @@ interface GeneratedResume {
 
 const router = useRouter();
 const $q = useQuasar();
+const bex = $q.bex as BexBridge;
 const resumes = ref<GeneratedResume[]>([]);
 const loading = ref(true);
 const deleteDialog = ref(false);
@@ -187,7 +215,7 @@ onMounted(async () => {
 });
 
 function openResume(url: string) {
-  void router.push({ path: '/app/resume-builder', query: { href: url } });
+  void router.push({ path: "/app/resume-builder", query: { href: url } });
 }
 
 function confirmDelete(resume: GeneratedResume) {
@@ -200,20 +228,22 @@ async function deleteResume() {
   deleting.value = true;
   try {
     const db = await initDB();
-    await db.delete('generatedResumes', resumeToDelete.value.url);
-    resumes.value = resumes.value.filter(r => r.url !== resumeToDelete.value!.url);
+    await db.delete("generatedResumes", resumeToDelete.value.url);
+    resumes.value = resumes.value.filter(
+      (r) => r.url !== resumeToDelete.value!.url,
+    );
     $q.notify({
-      type: 'positive',
-      message: 'Resume deleted successfully',
-      icon: 'check_circle',
-      position: 'bottom-right',
+      type: "positive",
+      message: "Resume deleted successfully",
+      icon: "check_circle",
+      position: "bottom-right",
     });
   } catch {
     $q.notify({
-      type: 'negative',
-      message: 'Failed to delete resume',
-      icon: 'error',
-      position: 'bottom-right',
+      type: "negative",
+      message: "Failed to delete resume",
+      icon: "error",
+      position: "bottom-right",
     });
   } finally {
     deleting.value = false;
@@ -223,7 +253,7 @@ async function deleteResume() {
 }
 
 function formatDate(dateStr: string | null): string {
-  if (!dateStr) return 'Unknown date';
+  if (!dateStr) return "Unknown date";
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -231,16 +261,34 @@ function formatDate(dateStr: string | null): string {
   const diffHrs = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return 'Just now';
+  if (diffMins < 1) return "Just now";
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHrs < 24) return `${diffHrs}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
 
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
   });
+}
+const aiProvider = ref("deepseek");
+async function createNewResume() {
+  const url = aiSites["deepseek"];
+  const tab = await chrome.tabs.create({ url: url, active: false });
+  $q.notify({ message: "opening " + aiProvider.value + " site it might" });
+  if (tab.id == undefined) {
+    return;
+  }
+  setTimeout(() => {
+    void chrome.tabs.sendMessage(tab.id!, {
+      type: "newChat",
+      payload: "later i will ask you to help me craft a resume/cv  ",
+    });
+    bex.once("receiveChatProxyResponse", (p) => {
+      console.log(p, "recieved message");
+    });
+  }, 5000);
 }
 </script>
 
@@ -300,13 +348,17 @@ function formatDate(dateStr: string | null): string {
 }
 
 .card-preview::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -30%;
   right: -20%;
   width: 120px;
   height: 120px;
-  background: radial-gradient(circle, rgba(249, 115, 22, 0.08), transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(249, 115, 22, 0.08),
+    transparent 70%
+  );
   border-radius: 50%;
 }
 

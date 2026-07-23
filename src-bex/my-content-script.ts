@@ -53,7 +53,6 @@ const AI_HOSTNAMES = Object.keys(AI_SITES) as Array<keyof typeof AI_SITES>;
 
 let currentSelector = "";
 let maxRetries = 100;
-
 function getElementBySelector(selector: string) {
   if (selector === "rich-textarea") {
     return getGeminiInput();
@@ -62,32 +61,73 @@ function getElementBySelector(selector: string) {
 }
 
 const waitForSelector = (selector: string) => {
-  console.log(selector, "selector");
   return new Promise((resolve) => {
     currentSelector = selector;
     const interval = setInterval(() => {
       const element = getElementBySelector(selector);
-      if (element || maxRetries-- === 0) {
+      maxRetries--;
+      if (element || maxRetries === 0) {
         clearInterval(interval);
         resolve(element || null);
       }
-    }, 100);
+    }, 1000);
   });
 };
 
-const fillInput = (selector: string, value: string) => {
-  const element = getElementBySelector(selector);
-  if (!element) return;
+const fillInput = (
+  selector: string,
+  value: string,
+  timeoutMs: number = 5000,
+): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const startTime = Date.now();
+    let intervalId: NodeJS.Timeout | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
 
-  if (element instanceof HTMLTextAreaElement) {
-    element.value = value;
-    element.dispatchEvent(new Event("input", { bubbles: true }));
-  } else if (element.getAttribute("contenteditable") === "true") {
-    element.innerText = value;
-    element.dispatchEvent(new Event("input", { bubbles: true }));
-  }
+    const attemptFill = () => {
+      const element = getElementBySelector(selector);
+
+      if (element) {
+        // Element found - fill it
+        if (element instanceof HTMLTextAreaElement) {
+          element.value = value;
+          element.dispatchEvent(new Event("input", { bubbles: true }));
+        } else if (element.getAttribute("contenteditable") === "true") {
+          element.innerText = value;
+          element.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+
+        // Clean up and resolve
+        if (intervalId) clearInterval(intervalId);
+        if (timeoutId) clearTimeout(timeoutId);
+        resolve();
+        return;
+      }
+
+      // Check if timeout has been reached
+      if (Date.now() - startTime >= timeoutMs) {
+        // Clean up and exit quietly (resolve without doing anything)
+        if (intervalId) clearInterval(intervalId);
+        if (timeoutId) clearTimeout(timeoutId);
+        resolve(); // Quiet exit - resolve without error
+        return;
+      }
+    };
+
+    // Initial attempt
+    attemptFill();
+
+    // Set up retry interval (every 2 seconds)
+    intervalId = setInterval(attemptFill, 2000);
+
+    // Set up overall timeout
+    timeoutId = setTimeout(() => {
+      if (intervalId) clearInterval(intervalId);
+      if (timeoutId) clearTimeout(timeoutId);
+      resolve(); // Quiet exit on timeout
+    }, timeoutMs);
+  });
 };
-
 const getPageInfo = () => {
   const icon = document.querySelector("link[rel='icon']")?.getAttribute("href");
   const url = new URL(icon || "", location.origin).href;
@@ -106,7 +146,7 @@ const initializeAISite = async () => {
   const selector =
     AI_SITES[window.location.hostname as keyof typeof AI_SITES]();
   await waitForSelector(selector);
-  console.log("send to bg");
+
   void bridge.send({
     event: "aiSiteLoaded",
     payload: getPageInfo(),
@@ -163,9 +203,14 @@ const messageListeners: Record<string, (data?: any) => any> = {
     createNotification(payload);
     console.log(payload, "notification");
   },
-  chatProxy: ({ payload }) => {
-    const { message } = payload;
-    fillInput(currentSelector, message);
+  async newChat({ payload }) {
+    await initializeAISite();
+    await waitForSelector(currentSelector);
+    console.log("selector ready");
+    messageListeners["chatProxy"]!({ message: payload });
+  },
+  chatProxy: async ({ message }) => {
+    await fillInput(currentSelector, message);
     watchAiGeneration((data, text) => {
       void bridge.send({
         event: "chatProxyResponse",
@@ -175,20 +220,10 @@ const messageListeners: Record<string, (data?: any) => any> = {
         },
         to: "background",
       });
-      void bridge.send({
-        event: "resumeGenerated",
-        payload: {
-          resume: data,
-          url: payload.url,
-          chatUrl: window.location.href,
-          title: payload.title,
-        },
-        to: "background",
-      });
     });
     setTimeout(() => {
       dispatchEnter(document.querySelector(currentSelector) as HTMLElement);
-    }, 2000);
+    }, 3500);
   },
 };
 // Chrome runtime message handler
@@ -199,9 +234,9 @@ chrome.runtime.onMessage.addListener((message, sender, response) => {
   }
 });
 
-bridge.on("generate-resume", ({ payload }) => {
-  const prompt = `${resumeGenerationPrompt}\n\nUSER'S RAW DATA:\n${payload.resumeData}\n\nTARGET JOB DESCRIPTION:\n${payload.jobDescription}\n\nNow, generate the optimized resume using only the user data provided and the job description.`;
-  fillInput(currentSelector, prompt);
+bridge.on("generate-resume", async ({ payload }) => {
+  const prompt = `${resumeGenerationPrompt}\n\nUSER'S RAW DATA:\n${payload.resumeData}\n\nTARGET JOB DESCRIPTION:\n${payload.jobDescription}\n\n Now, generate the optimized resume using only the user data provided and the job description.`;
+  await fillInput(currentSelector, prompt);
   watchAiGeneration((data) => {
     console.log(data, "data resume");
     void bridge.send({
@@ -220,9 +255,9 @@ bridge.on("generate-resume", ({ payload }) => {
   }, 2000);
 });
 
-bridge.on("extract-job-details", ({ payload }) => {
+bridge.on("extract-job-details", async ({ payload }) => {
   // TODO: Implement job details extraction
-  fillInput(currentSelector, payload);
+  await fillInput(currentSelector, payload);
   watchAiGeneration((data) => {
     console.log(data, "data extract");
     void bridge.send({
@@ -237,6 +272,8 @@ bridge.on("extract-job-details", ({ payload }) => {
 });
 
 function dispatchEnter(element: HTMLElement) {
+  element.focus();
+
   element.dispatchEvent(
     new KeyboardEvent("keydown", {
       key: "Enter",
@@ -248,8 +285,8 @@ function dispatchEnter(element: HTMLElement) {
   );
 }
 
-bridge.on("fillForm", ({ payload }) => {
-  fillInput(currentSelector, payload.html);
+bridge.on("fillForm", async ({ payload }) => {
+  await fillInput(currentSelector, payload.html);
   watchAiGeneration((data) => {
     void bridge.send({
       event: "formFilled",
@@ -283,11 +320,15 @@ function watchAiGeneration(callback: (data: any, text?: string[]) => void) {
 
   window.addEventListener("message", (event) => {
     if (event.data.type === "chat-response-ready") {
-      const parts = event.data.detail.text.split(/```(?:json)+/);
-      const secondPart = parts.length > 1 ? parts[1].split("```") : null;
+      console.log(event.data.detail.text, "response from ai");
+      const parts = event.data.detail.text.split(/```(?:json)+/, 2);
+      const secondPart = parts.length > 1 ? parts[1]?.split("```", 2) : null;
       const jsonString = secondPart?.[0] || null;
       const noneCodeBlock = [parts[0], secondPart?.[1]];
-      const json = JSON.parse(jsonString);
+
+      const json =
+        jsonString && jsonString.length > 2 ? JSON.parse(jsonString || "") : "";
+      console.log(json, noneCodeBlock, "response from ai");
       callback(json, noneCodeBlock);
     }
   });

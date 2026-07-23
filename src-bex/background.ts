@@ -215,6 +215,10 @@ bridge.on("openAiSite", ({ payload }) => {
   void openAiSite(payload, () => {});
 });
 
+bridge.on("startNewChat", ({ payload }) => {
+  void openAiSite(payload, () => {});
+});
+
 /**
  * Open the extension interface at a specific page
  */
@@ -223,9 +227,8 @@ bridge.on("openExtension", ({ payload }) => {
 });
 
 bridge.on("chatProxyResponse", ({ payload }) => {
-  console.log(payload, "chatProxyResponse");
   void bridge.send({
-    event: "chatProxyResponse",
+    event: "receiveChatProxyResponse",
     payload: payload,
     to: "app",
   });
@@ -289,7 +292,6 @@ bridge.on("resumeGenerated", async ({ payload }) => {
  * Opens the specified AI platform and- sends resume data + job description
  */
 bridge.on("generate-resume", ({ payload }) => {
-  console.log("generate-resume", payload);
   listenToPageLoad = true; // Enable listening for AI page load
   void openAiSite(payload.ai, () => {
     // Send generation request to the content script in the AI tab
@@ -340,7 +342,6 @@ bridge.on("extract-job-details", async ({ payload, from }) => {
       title: p.title,
       savedAt: new Date().toISOString(),
     });
-    console.log("job saved successfully", p.title);
     listenToPageLoad = false;
     const tabs = await chrome.tabs.query({ active: true });
     tabs.forEach((t) => {
@@ -366,7 +367,6 @@ bridge.on("extract-job-details", async ({ payload, from }) => {
   await openAiSite(
     payload.platform,
     async () => {
-      console.log("activeTab", activeTab);
       sourceInfo = payload.window;
       // Send extraction request to the content script in the AI tab
       void (await bridge.send({

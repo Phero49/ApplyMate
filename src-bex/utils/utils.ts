@@ -376,11 +376,9 @@ export function fillFromAIMappings(fieldMap: Fields): void {
   }
 }
 
-// Usage example
-// const result = prepareFormForAI();
-// console.log("Clean HTML for AI:", result.cleanedHTML);
-// console.log("Fields found:", result.fieldCount);
-
-// After AI returns mappings, fill the original form:
-// const aiMappings = new Map(); // This would come from your AI call
-// fillFromAIMappings(result.fieldMap, aiMappings);
+export const aiSites = {
+  chatgpt: "https://chatgpt.com",
+  deepseek: "https://chat.deepseek.com",
+  gemini: "https://gemini.google.com",
+  qwen: "https://chat.qwen.ai",
+};

@@ -203,8 +203,10 @@ export async function addSavedJob(job: Omit<SavedJob, "id">) {
 export async function getSavedJobs(): Promise<SavedJob[]> {
   const db = await initDB();
   const data = await db.getAll("savedJobs");
-  console.log(data);
-  return data;
+  const sortedBySaved = data.sort(
+    (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime(),
+  );
+  return sortedBySaved;
 }
 
 export async function deleteSavedJob(url: string) {
@@ -261,9 +263,12 @@ export async function saveGeneratedResume(resume: any) {
   });
 }
 
+
+
 export async function getGeneratedResume(url: string) {
   const db = await initDB();
-  return db.get("generatedResumes", url);
+  const data = await db.get("generatedResumes", url);
+  return data;
 }
 
 export async function getAllGeneratedResumes() {

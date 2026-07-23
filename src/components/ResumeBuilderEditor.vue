@@ -37,7 +37,11 @@
             v-for="layout in availableLayouts"
             :key="layout.name"
             @click="currentSelectedLayout = layout"
+            :disable="layout.name != 'vertical'"
           >
+            <q-tooltip v-if="layout.name != 'vertical'">
+              vertical is only available for now
+            </q-tooltip>
             <q-item-section avatar>
               <q-icon color="primary" :name="layout.icon" />
             </q-item-section>
@@ -53,7 +57,7 @@
       <q-tab-panel name="format">
         <format-text />
       </q-tab-panel>
-      <q-tab-panel name="AI" class="q-pa-none">
+      <q-tab-panel name="AI" class="q-pa-none q-pr-lg">
         <resume-chat />
       </q-tab-panel>
     </q-tab-panels>

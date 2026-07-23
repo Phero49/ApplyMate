@@ -19,10 +19,11 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import ContentItem from "./ContentItem.vue";
 import { useAppContext } from "src/stores/appStore";
 
-const resume = useAppContext().resume;
+const resume = computed(() => useAppContext().resume);
 </script>
 
 <style scoped>

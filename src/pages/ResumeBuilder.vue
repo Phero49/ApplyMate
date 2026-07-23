@@ -2,13 +2,7 @@
   <q-layout view="hHh LpR fFf">
     <q-header bordered class="bg-white text-black">
       <q-toolbar>
-        <q-btn
-          flat
-          dense
-          round
-          icon="arrow_back"
-          @click="$router.push('/app')"
-        />
+        <q-btn flat dense round icon="arrow_back" @click="$router.back()" />
         <q-toolbar-title>Resume Builder</q-toolbar-title>
         <q-btn
           icon="undo"
@@ -37,80 +31,13 @@
       </q-toolbar>
     </q-header>
     <q-drawer show-if-above v-model="leftDrawerOpen" :width="340" side="left">
-      <q-scroll-area class="fit">
+      <q-scroll-area style="overflow-x: hidden" class="fit q-pr-md">
         <resume-builder-editor />
-        <!-- <div class="q-pa-md">
-          <div class="q-py-md text-subtitle1">Layout</div>
-          <div class="row justify-between">
-            <q-btn
-              dense
-              :color="layout == 'vertical' ? 'primary' : 'grey'"
-              :icon="biSquare"
-              size="md"
-              @click="
-                () => {
-                  layout = 'vertical';
-                }
-              "
-            />
-            <q-btn
-              dense
-              :color="
-                layout == 'twoColumn' && columnSide == 'left'
-                  ? 'primary'
-                  : 'grey'
-              "
-              @click="
-                () => {
-                  layout = 'twoColumn';
-                  columnSide = 'left';
-                }
-              "
-              :icon="biLayoutSidebar"
-              size="md"
-            />
-            <q-btn
-              dense
-              :color="
-                layout == 'twoColumn' && columnSide == 'right'
-                  ? 'primary'
-                  : 'grey'
-              "
-              :icon="biLayoutSidebarReverse"
-              size="md"
-              @click="
-                () => {
-                  layout = 'twoColumn';
-                  columnSide = 'right';
-                }
-              "
-            />
-          </div>
-        </div>
-
-        <div class="q-px-md q-mb-lg">
-          <div class="q-py-sm text-subtitle1">Styling</div>
-          <q-select
-            v-model="selectedFont"
-            :options="fontOptions"
-            label="Font Family"
-            dense
-            outlined
-            class="q-mb-md"
-          />
-          <q-toggle
-            v-model="showSectionLines"
-            label="Show Section Lines"
-            color="primary"
-          />
-        </div> -->
-
-        <!-- <format-text /> -->
       </q-scroll-area>
     </q-drawer>
 
     <q-page-container>
-      <q-page>
+      <q-page v-if="resume">
         <div>
           <div class="bg-grey-4 q-pt-md text-black row justify-center">
             <div
@@ -192,6 +119,9 @@
           </div>
         </div>
       </q-page>
+      <q-inner-loading :showing="!resume">
+        <q-spinner-ios size="50px" color="primary" />
+      </q-inner-loading>
     </q-page-container>
   </q-layout>
 </template>
@@ -219,9 +149,11 @@ import { useDomStore } from "src/stores/dom";
 import { useRoute } from "vue-router";
 import { getGeneratedResume } from "src/db";
 import { exportPdf } from "../composable/resumeBuilder";
+import { computed } from "vue";
 //const templates = ref();
 const domStore = useDomStore();
 const selectedFont = ref("Roboto");
+const resume = computed(() => useAppContext().resume);
 const appStore = useAppContext();
 const leftDrawerOpen = ref(true);
 const getComponents = (key: string) => {
@@ -262,12 +194,15 @@ onMounted(async () => {
   await store.loadProfile();
   if (key) {
     const resumeData = await getGeneratedResume(key as string);
+    console.log(resumeData, key);
     appStore.resume = resumeData.resume;
+    appStore.resumeData = resumeData;
+    appStore.aiChatUrl = resumeData.chatUrl;
   }
 });
 
 const exportToPDF = () => {
-  exportPdf();
+  void exportPdf();
 };
 </script>
 

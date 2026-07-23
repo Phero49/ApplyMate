@@ -1,3 +1,6 @@
 {
+  "compilerOptions": {
+    "types": ["chrome"]
+  },
   "extends": "./.quasar/tsconfig.json"
 }

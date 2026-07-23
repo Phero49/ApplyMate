@@ -16,6 +16,8 @@
   "dependencies": {
     "@mozilla/readability": "^0.6.0",
     "@quasar/extras": "^1.16.4",
+    "@types/chrome": "^0.2.2",
+    "highlight.js": "^11.11.1",
     "idb": "^8.0.3",
     "marked": "^18.0.4",
     "pdf-lib": "^1.17.1",

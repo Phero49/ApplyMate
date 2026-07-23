@@ -2,7 +2,7 @@
   <q-page class="q-pa-md">
     <div class="row items-center justify-between q-mb-md border-bottom q-pb-sm">
       <div>
-        <h1 class="text-h5 text-weight-bold q-my-none">Saved jobs</h1>
+        <div class="text-h5 text-weight-bold q-my-none">Saved jobs</div>
         <p class="text-body2 text-grey q-mt-xs">
           job links you saved you will get notified about saved jobs every hour
         </p>
@@ -10,94 +10,116 @@
     </div>
 
     <q-list class="q-gutter-y-md">
-      <q-item
-        v-for="(job, i) in savedJobs"
-        :key="i"
-        class="activity-item bg-grey-10"
-      >
-        <q-item-section avatar top>
-          <q-avatar
-            size="46px"
-            color="primary"
-            text-color="white"
-            rounded
-            class="opacity-80"
-          >
-            <img :src="job.icon" alt="" srcset="" />
-          </q-avatar>
-        </q-item-section>
-        <q-item-section>
-          <q-item-label class="text-primary text-h6">{{
-            job.title
-          }}</q-item-label>
+      <q-expansion-item v-for="(job, i) in savedJobs" :key="i" expand-separator>
+        <template #header>
+          <div class="row items-center full-width">
+            <div>
+              <q-icon size="md" :name="'img:' + job.icon" />
+            </div>
+            <div class="q-pl-lg col-grow">
+              <div class="text-subtile2">
+                {{ job.title }}
+              </div>
+              <div class="text-grey text-caption row">
+                Employer: {{ job.company }}
+                <q-separator spaced vertical /> closed Date :
+                {{
+                  new Date(job.closeDate).toLocaleDateString(undefined, {
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                  }) || "-"
+                }}
 
-          <q-item-label class="text-subtitle2 text-grey-5 q-mt-sm">
-            Employer: {{ job.company }}</q-item-label
-          >
-          <q-item-label class="q-mt-sm">
-            <q-chip square size="sm" color="negative">
-              closed Date :
-              {{
-                new Date(job.closeDate).toLocaleDateString(undefined, {
-                  day: "2-digit",
-                  month: "long",
-                  year: "numeric",
-                }) || "-"
-              }}
-            </q-chip>
-            <q-chip square size="sm" color="grey-8">
-              saved on :
-              {{
-                new Date(job.savedAt).toLocaleDateString(undefined, {
-                  day: "2-digit",
-                  month: "long",
-                  year: "numeric",
-                }) || "-"
-              }}
-            </q-chip>
-            <q-checkbox
-              v-model="job.applied"
-              @update:model-value="markAsApplied(job, $event)"
-              label="Applied"
-            />
-          </q-item-label>
-          <q-item-label class="text-grey-4 text-body2">
-            <q-separator spaced />
-            <div v-parse-text="job.summary"></div>
-          </q-item-label>
-          <div class="q-mt-sm">
-            <div class="text-subtitle2 text-grey">Time left</div>
-            <count-down-timer
-              :targetDate="
-                new Date(
-                  (job.closeDate ?? '').replace(/(\d+)(st|nd|rd|th)/, '$1'),
-                )
-              "
-            />
-          </div>
-        </q-item-section>
+                <q-separator spaced vertical />
 
-        <q-item-section side top>
-          <div class="row items-center q-gutter-x-sm">
-            <q-btn
-              color="primary"
-              icon="open_in_new"
-              dense
-              unelevated
-              @click="openLink(job.url)"
-            >
-              <q-tooltip> view job link </q-tooltip>
-            </q-btn>
-            <q-btn
-              color="red"
-              @click="deleteLink(job.url, i)"
-              unelevated
-              dense
-              icon="close"
-            />
+                saved on :
+                {{
+                  new Date(job.savedAt).toLocaleDateString(undefined, {
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                  }) || "-"
+                }}
+                <q-separator spaced vertical />
+
+                <q-badge
+                  v-if="
+                    job.applied == false && new Date(job.closeDate) > new Date()
+                  "
+                  color="green-7"
+                  floating
+                  text-color="white"
+                  label="not applied"
+                />
+                <q-badge
+                  v-else-if="
+                    job.applied == true && new Date(job.closeDate) > new Date()
+                  "
+                  color="green-5"
+                  floating
+                  text-color="white"
+                  label="applied"
+                />
+                <q-badge
+                  v-else-if="new Date(job.closeDate) < new Date()"
+                  color="red-5"
+                  floating
+                  text-color="white"
+                  label="missed"
+                />
+              </div>
+            </div>
           </div>
-        </q-item-section>
-      </q-item>
+        </template>
+        <q-item class="activity-item bg-grey-10">
+          <q-item-section>
+            <div>
+              <count-down-timer
+                label="time left to apply"
+                :targetDate="
+                  new Date(
+                    (job.closeDate ?? '').replace(/(\d+)(st|nd|rd|th)/, '$1'),
+                  )
+                "
+              />
+            </div>
+
+            <q-item-label class="text-grey-4 text-body2">
+              <q-separator spaced />
+              <div v-parse-text="job.summary"></div>
+            </q-item-label>
+          </q-item-section>
+
+          <q-item-section side top>
+            <div class="row items-center q-gutter-x-sm">
+              <span class="q-ml-sm text-uppercase"
+                ><q-checkbox
+                  left-label
+                  v-model="job.applied"
+                  @update:model-value="() => markAsApplied(job)"
+                  label="applied"
+              /></span>
+              <q-btn
+                color="primary"
+                icon="open_in_new"
+                dense
+                unelevated
+                @click="openLink(job.url)"
+              >
+                <q-tooltip> view job link </q-tooltip>
+              </q-btn>
+              <q-btn
+                color="red"
+                @click="deleteLink(job.url, i)"
+                unelevated
+                dense
+                icon="close"
+              />
+            </div>
+          </q-item-section>
+        </q-item>
+      </q-expansion-item>
     </q-list>
   </q-page>
 </template>
@@ -164,8 +186,7 @@ function openLink(url: string) {
   window.open(url, "_blank");
 }
 
-function markAsApplied(job: SavedJob, v: boolean) {
-  job.applied = v;
+function markAsApplied(job: SavedJob) {
   void addSavedJob(toRaw(job));
 }
 </script>

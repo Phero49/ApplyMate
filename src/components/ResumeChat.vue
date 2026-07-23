@@ -1,14 +1,41 @@
 <template>
   <div class="resume-chat">
+    <select-ai-models
+      v-show="false"
+      @update:model-value="(v) => (aiProvider = v)"
+    />
     <!-- Chat Header -->
     <div class="chat-header">
       <div class="row items-center no-wrap">
-        <div class="chat-model-dot">
-          <img src="" alt="" />
+        <div class="col">
+          <q-field
+            :disable="$route.query.href != undefined"
+            dense
+            v-model="aiProvider"
+            class="text-white"
+            label="Select AI site"
+          >
+            <span class="text-white">{{ aiProvider }}</span>
+            <q-menu>
+              <div class="q-ma-md" style="min-width: 280px">
+                <select-ai-models
+                  @update:model-value="(v) => (aiProvider = v)"
+                />
+              </div>
+            </q-menu>
+            <template #prepend>
+              <div>
+                <div>
+                  <q-avatar class="chat-model-dot" size="30px">
+                    <img :src="aiIcons" alt="" />
+                  </q-avatar>
+                </div>
+              </div>
+            </template>
+          </q-field>
         </div>
       </div>
     </div>
-
     <!-- Messages Area -->
     <div ref="messagesContainer" class="messages-area">
       <!-- Empty state -->
@@ -50,6 +77,7 @@
         v-for="msg in messages"
         :key="msg.id"
         class="message-wrapper"
+        :message-id="`message-${msg.id}`"
         :class="{
           'user-message': msg.role === 'user',
           'model-message': msg.role === 'model',
@@ -133,21 +161,36 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, watch } from "vue";
+import { ref, nextTick, watch, computed } from "vue";
 import { useChat } from "src/composable/useChat";
 import { marked } from "marked";
+import { getAiPlatformIcon } from "../utils/platformIcons";
+import { useAppContext } from "src/stores/appStore";
+import { useQuasar } from "quasar";
+import type { BexBridge } from "@quasar/app-vite";
+import SelectAiModels from "src/components/SelectAiModels.vue";
+import { useRoute } from "vue-router";
+import { aiSites } from "app/src-bex/utils/utils";
 
+const aiProvider = ref("deepseek");
+const $q = useQuasar();
+const bex = $q.bex as BexBridge;
 const {
   messages,
   isStreaming,
   error,
 
   sendMessage,
-} = useChat();
+} = useChat(bex);
 
 const input = ref("");
 const messagesContainer = ref<HTMLElement | null>(null);
-
+const appContent = useAppContext();
+const aiIcons = computed(() =>
+  getAiPlatformIcon(
+    appContent.aiChatUrl.length > 0 ? appContent.aiChatUrl : aiProvider.value,
+  ),
+);
 const quickActions = [
   {
     icon: "edit_note",
@@ -200,12 +243,26 @@ function onKeyDown(e: KeyboardEvent) {
     void send();
   }
 }
-
+const route = useRoute();
 async function send() {
   if (!input.value.trim() || isStreaming.value) return;
   const text = input.value;
   input.value = "";
-  await sendMessage(text);
+  if (route.query.href) {
+    const platform = aiProvider.value as keyof typeof aiSites;
+    const url = aiSites[platform];
+    const tab = await chrome.tabs.create({ url: url, active: false });
+    $q.notify({ message: "opening " + aiProvider.value + " site it might" });
+    if (tab.id == undefined) {
+      return;
+    }
+    setTimeout(() => {
+      void chrome.tabs.sendMessage(tab.id!, { type: "newChat", message: text });
+      // void sendMessage(text);
+    }, 5000);
+  } else {
+    await sendMessage(text);
+  }
 }
 
 async function sendQuickAction(prompt: string) {
@@ -238,11 +295,7 @@ function renderMarkdown(text: string): string {
 }
 
 .chat-model-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #22c55e;
-  margin-right: 8px;
+  background-color: white;
   box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
   animation: pulse-dot 2s infinite;
 }
@@ -277,7 +330,8 @@ function renderMarkdown(text: string): string {
 }
 
 .messages-area::-webkit-scrollbar {
-  width: 4px;
+  width: 10px;
+  cursor: hand;
 }
 
 .messages-area::-webkit-scrollbar-track {
