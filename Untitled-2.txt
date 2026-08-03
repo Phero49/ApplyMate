@@ -1,0 +1,186 @@
+import type { CSSProperties } from "vue";
+
+/**
+ * Resume Schema - A flexible, markdown-powered resume format
+ * Supports single-column, two-column, and custom layouts
+ */
+export interface Resume {
+  /**
+   * Layout type for the resume
+   * - 'vertical': Single column layout (all sections stacked vertically)
+   * - 'left-column': Two-column layout with sidebar on the left
+   * - 'right-column': Two-column layout with sidebar on the right
+   * @default 'vertical'
+   */
+  layout: "vertical" | "left-column" | "right-column";
+
+  /**
+   * Global styling configuration for the entire resume
+   * All styles use CSSProperties format
+   */
+  style?: {
+    /**
+     * Default styling for all section titles
+     * Supports: fontWeight, fontSize, color, background, margin
+     * @example { fontWeight: 'bold', fontSize: '16px', color: '#1f2937' }
+     */
+    title?: CSSProperties;
+
+    /**
+     * Default styling for all body text
+     * Supports: fontSize, color, lineHeight, fontFamily
+     * @example { fontSize: '14px', lineHeight: '1.6', color: '#374151' }
+     */
+    bodyText?: CSSProperties;
+
+    /**
+     * Width of the side column (only for left/right-column layouts)
+     * @default '25%'
+     * @example '30%' | '250px'
+     */
+    sideColumnWidth?: string;
+
+    /**
+     * Whether to show a visual separator between sections
+     * @default false
+     */
+    sectionSeparator?: boolean;
+  };
+
+  /**
+   * Header section - Always displayed at the top of the resume
+   * Contains the person's name and professional headline
+   */
+  head: {
+    /**
+     * Full name of the person
+     * @example 'Jane Doe' | 'Dr. John Smith'
+     */
+    name: string;
+
+    /**
+     * Professional headline/title
+     * @example 'Senior Software Engineer' | 'AI Researcher & Data Scientist'
+     */
+    headline: string;
+  };
+
+  /**
+   * Body sections - Main content of the resume
+   * Each section can be positioned in different columns
+   */
+  body: Array<{
+    /**
+     * Which column this section should appear in
+     * - 'main': Main content column (right side in two-column layouts)
+     * - 'left': Left sidebar column (only in two-column layouts)
+     * - 'right': Right sidebar column (only in two-column layouts)
+     * @default 'main'
+     */
+    side?: "main" | "left" | "right";
+
+    /**
+     * Top margin for this section (overrides global spacing)
+     * @example '0px' | '10px' | '20px'
+     */
+    marginTop?: string;
+
+    /**
+     * Bottom margin for this section (overrides global spacing)
+     * @example '0px' | '10px' | '25px'
+     */
+    marginBottom?: string;
+
+    /**
+     * Section title configuration
+     * Optional - if omitted, the section will have no title
+     */
+    title?: {
+      /**
+       * Text alignment for the title
+       * @default 'left'
+       */
+      align?: "left" | "center" | "right";
+
+      /**
+       * Title text (supports Markdown)
+       * @example 'Experience' | '📚 Publications' | '**Core Competencies**'
+       */
+      text: string;
+
+      /**
+       * Whether to show an underline below the title
+       * @default false
+       */
+      underline?: boolean;
+    };
+
+    /**
+     * Main content of the section
+     * Supports two types of content: header rows and list items
+     */
+    textRows: {
+      /**
+       * Type of list formatting for listData items
+       * - 'bullets': Unordered bullet points (•)
+       * - 'number': Ordered numbered list (1., 2., 3.)
+       * - 'none': No list formatting (plain text)
+       * @default 'none'
+       */
+      list?: "bullets" | "number" | "none";
+
+      /**
+       * Header rows - typically displayed as a single line with key information
+       * Used for job titles, company names, dates, etc.
+       * @example For Experience: "Senior Engineer" + "Google · 2020-Present"
+       */
+      rows: {
+        /**
+         * Array of content items to display as header
+         * Each item can be individually styled
+         */
+        content: Array<{
+          /**
+           * Text content (supports Markdown)
+           * @example '**Senior Engineer**' | '*Google · 2020-Present*'
+           */
+          text: string;
+
+          /**
+           * Optional inline styling for this specific content item
+           * Overrides global bodyText style
+           */
+          style?: CSSStyleProperties;
+        }>;
+
+        /**
+         * How to justify the content items
+         * - 'left': All items aligned left
+         * - 'right': All items aligned right
+         * - 'space-between': First item left, last item right
+         * @default 'left'
+         */
+        justify?: "left" | "right" | "space-between";
+      };
+
+      /**
+       * List items - detailed information, bullet points, or numbered items
+       * Used for job responsibilities, project details, publication metadata
+       * @example Job bullets: "Built microservices" | "Led team of 5"
+       */
+      listData?: Array<{
+        /**
+         * List item text (supports Markdown)
+         * @example 'Built scalable **microservices**' | '[arXiv:1706.03762](https://arxiv.org)'
+         */
+        text: string;
+
+        /**
+         * Optional inline styling for this specific list item
+         * Overrides global bodyText style
+         */
+        style?: CSSStyleProperties;
+      }>;
+    };
+  }>;
+}

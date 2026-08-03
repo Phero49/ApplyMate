@@ -382,3 +382,17 @@ export const aiSites = {
   gemini: "https://gemini.google.com",
   qwen: "https://chat.qwen.ai",
 };
+
+export function getPlatformByUrl(url: string) {
+  const urlObj = new URL(url);
+  const hostname = urlObj.hostname.toLowerCase();
+
+  const site = Object.entries(aiSites).find(([platform, siteUrl]) => {
+    const siteHostname = new URL(siteUrl).hostname.toLowerCase();
+    if (hostname === siteHostname) {
+      return platform;
+    }
+  });
+
+  return site ? site[0] : null;
+}

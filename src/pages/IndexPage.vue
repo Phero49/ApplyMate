@@ -11,8 +11,8 @@
       />
       <q-separator />
       <div class="text-center text-subtitle1 q-py-md">Select Default AI</div>
-      <select-ai-models v-model:defaultAI="defaultAI" />
-   
+      <select-ai-models @update:modelValue="onAiChange" />
+
       <q-separator spaced class="q-my-md" />
 
       <q-list separator class="text-capitalize">
@@ -36,14 +36,19 @@
 <script setup lang="ts">
 import {
   symRoundedBookmarkAdd,
-  symRoundedCheckCircle,
   symRoundedContractEdit,
   symRoundedInboxText,
 } from "@quasar/extras/material-symbols-rounded";
 import { useQuasar } from "quasar";
-import { addSavedLink, getProfile } from "src/db";
+import {
+  addSavedLink,
+  getProfile,
+  getUserSettings,
+  saveUserSettings,
+  type AiProvider,
+} from "src/db";
 
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { type BexBridge } from "@quasar/app-vite";
 import SelectAiModels from "src/components/SelectAiModels.vue";
 
@@ -52,7 +57,26 @@ const bex = $q.bex as BexBridge;
 const openExtension = (page: string) => {
   void bex.send({ event: "openExtension", payload: page, to: "background" });
 };
-const defaultAI = ref("chatgpt");
+const defaultAI = ref("deepseek");
+
+onMounted(async () => {
+  const savedSettings = await getUserSettings();
+  if (savedSettings?.defaultAi) {
+    defaultAI.value = savedSettings.defaultAi;
+  }
+});
+
+const onAiChange = async (value: string) => {
+  defaultAI.value = value;
+
+  await saveUserSettings({
+    id: "current",
+    defaultAi: value as AiProvider,
+    remindersEnabled: true,
+    reminderIntervalHours: 24,
+  });
+};
+
 const actions = [
   {
     icon: symRoundedContractEdit,

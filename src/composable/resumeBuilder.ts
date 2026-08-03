@@ -2,7 +2,11 @@ import { biLayoutSidebar, biSquare } from "@quasar/extras/bootstrap-icons";
 import { reactive, ref } from "vue";
 import pdfMake from "pdfmake";
 import { useAppContext } from "src/stores/appStore";
-import type { TDocumentDefinitions, Content } from "pdfmake/interfaces";
+import type {
+  TDocumentDefinitions,
+  Content,
+  TFontFamilyTypes,
+} from "pdfmake/interfaces";
 import { getFontAsUrl } from "src/db";
 import { useDomStore } from "src/stores/dom";
 
@@ -102,7 +106,7 @@ export async function exportPdf() {
   };
   const fonts = await getFontAsUrl("Arial");
   pdfMake.fonts = {
-    Arial: fonts,
+    Arial: fonts as TFontFamilyTypes,
   };
 
   const content = docDefinition.content as Content[];
@@ -151,26 +155,32 @@ export async function exportPdf() {
   const renderContact = (target: Content[], width: number) => {
     if (!resume.contact) return;
     addSectionHeader("Contact", "contact-header", target, width);
-    const contactLine: Content[] = [];
+    type ContactLineItem = {
+      text: string;
+      margin: [number, number, number, number];
+      alignment: "left" | "right" | "center";
+      bold: boolean;
+    };
+
+    const contactLine: ContactLineItem[] = [];
     const inlineDisplay =
       domStore.styles["contact"]?.display === "inline" || true;
-    const alignment = (domStore.styles["contact"]?.alignment || "left") as
-      | "left"
-      | "right"
-      | "center";
+    // const alignment = (domStore.styles["contact"]?.alignment || "left") as
+    //   | "left"
+    //   | "right"
+    //   | "center";
     const includeLabels = domStore.styles["contact"]?.includeLabels || false;
     resume.contact.forEach((c) => {
       contactLine.push({
         text: `${includeLabels ? c.label + ":" : ""} ${c.value}`,
-        margin: [0, 0, 16, 0],
-        alignment: alignment,
+        margin: [0, 0, 10, 0],
+        alignment: "left",
         bold: true,
       });
     });
     if (inlineDisplay) {
       target.push({
-        columns: contactLine,
-        margin: [0, 0, 0, SPACING.betweenEntries],
+        columns: contactLine as unknown as Content[],
       });
     } else {
       // stacked (one per line) when not inline
@@ -186,6 +196,7 @@ export async function exportPdf() {
         }),
       );
     }
+    console.log(contactLine, "contact");
   };
 
   const renderSummary = (target: Content[], width: number) => {
@@ -245,12 +256,12 @@ export async function exportPdf() {
       target.push({
         columns: [
           {
-            text: edu.degree,
+            text: edu.degree ?? "",
             bold: true,
             ...getPdfStyle(`education.${i}.degree`),
           },
           {
-            text: edu.dates,
+            text: edu.dates ?? "",
             alignment: "right",
             ...getPdfStyle(`education.${i}.dates`),
           },
@@ -360,18 +371,18 @@ export async function exportPdf() {
           SPACING.afterEntryTitleRow,
         ],
       });
-      if (proj.description) {
-        target.push({
-          text: proj.description,
-          margin: [
-            0,
-            0,
-            0,
-            proj.bullets ? SPACING.beforeBullets : SPACING.betweenEntries,
-          ],
-          ...getPdfStyle(`projects.${i}.description`),
-        });
-      }
+      // if (proj.description) {
+      //   target.push({
+      //     text: proj.description,
+      //     margin: [
+      //       0,
+      //       0,
+      //       0,
+      //       proj.bullets ? SPACING.beforeBullets : SPACING.betweenEntries,
+      //     ],
+      //     ...getPdfStyle(`projects.${i}.description`),
+      //   });
+      // }
       if (proj.bullets) {
         target.push({
           ul: proj.bullets.map((b, j) => ({
@@ -392,7 +403,7 @@ export async function exportPdf() {
       target.push({
         columns: [
           {
-            text: award.title,
+            text: award.name,
             bold: true,
             ...getPdfStyle(`awards.${i}.title`),
           },
@@ -432,9 +443,7 @@ export async function exportPdf() {
     addSectionHeader("Languages", "languages-header", target, width);
     resume.languages.forEach((lang, i) => {
       target.push({
-        text: lang.proficiency
-          ? `${lang.language} — ${lang.proficiency}`
-          : lang.language,
+        text: lang.level ? `${lang.level} — ${lang.level}` : lang.level,
         margin: [0, 0, 0, 6],
         ...getPdfStyle(`languages.${i}`),
       });
@@ -612,11 +621,9 @@ export async function exportPdf() {
       });
 
     const sidebarColumn: Content = {
-      width: sidebarWidth,
       stack: sidebar,
     };
     const mainColumn: Content = {
-      width: mainWidth,
       stack: main,
     };
 

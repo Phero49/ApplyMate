@@ -8,9 +8,14 @@
       "128": "icons/icon-128x128.png"
     },
 
-    "permissions": ["storage", "tabs", "contextMenus", "alarms", "notifications"],
+    "permissions": [
+      "storage",
+      "tabs",
+      "contextMenus",
+      "alarms",
+      "notifications"
+    ],
 
-    "host_permissions": ["*://*/*"],
     "content_security_policy": {
       "extension_pages": "script-src 'self'; object-src 'self';"
     },

@@ -33,20 +33,21 @@ export interface Resume {
     name: string;
     issuer: string;
     date?: string;
-    bullets?: string[];
+    description?: string[];
   }>;
   volunteering?: Array<{
     title: string;
     organization: string;
+    role: string;
     dates: string;
     bullets: string[];
   }>;
   languages?: Array<{ name: string; level: string }>;
   references?: Array<{
+    relationship: string;
     name: string;
     company: string;
-    email: string;
-    phone: string;
+  contact:string
   }>;
 }
 

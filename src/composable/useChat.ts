@@ -1,9 +1,14 @@
-import { ref, toRaw } from "vue";
+import { reactive, ref, toRaw } from "vue";
 import { type Resume, useAppContext } from "src/stores/appStore";
 import type { BexBridge } from "@quasar/app-vite";
 import { marked } from "marked";
 import highlight from "highlight.js";
-import { saveGeneratedResume } from "src/db";
+import {
+  saveChatConversation,
+  saveGeneratedResume,
+  type ChatConversation,
+  type ChatMessageRecord,
+} from "src/db";
 export interface ChatMessage {
   id: string;
   role: "user" | "model";
@@ -15,14 +20,47 @@ export interface ChatMessage {
 const messages = ref<ChatMessage[]>([]);
 const isStreaming = ref(false);
 const error = ref<string | null>(null);
+export const chatMeta = reactive({
+  id: "",
+  title: "",
+});
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
 }
 
+function toRecord(message: ChatMessage): ChatMessageRecord {
+  const record: ChatMessageRecord = {
+    id: message.id,
+    role: message.role,
+    content: message.content,
+    timestamp: message.timestamp.toISOString(),
+  };
+
+  if (message.streaming !== undefined) {
+    record.streaming = message.streaming;
+  }
+
+  return record;
+}
+
+async function persistConversation() {
+  const now = new Date().toISOString();
+
+  const conversation: ChatConversation = {
+    id: chatMeta.id,
+    title: chatMeta.title,
+    createdAt: messages.value[0]?.timestamp.toISOString() || now,
+    updatedAt: now,
+    messages: messages.value.map(toRecord),
+  };
+
+  await saveChatConversation(conversation);
+}
+
 export function useChat(bridge: BexBridge) {
   const appContent = useAppContext();
-  async function sendMessage(userContent: string) {
+  async function sendMessage(userContent: string, url: string) {
     if (!userContent.trim() || isStreaming.value) return;
 
     error.value = null;
@@ -35,6 +73,7 @@ export function useChat(bridge: BexBridge) {
       timestamp: new Date(),
     };
     messages.value.push(userMsg);
+    await persistConversation();
 
     // Add placeholder assistant message
     const assistantMsg: ChatMessage = {
@@ -45,12 +84,13 @@ export function useChat(bridge: BexBridge) {
       streaming: true,
     };
     messages.value.push({ ...assistantMsg });
+    await persistConversation();
 
     isStreaming.value = true;
 
     try {
       //Send user message to ai tab
-      const tabs = await chrome.tabs.query({ url: appContent.aiChatUrl });
+      const tabs = await chrome.tabs.query({ url: url });
       let tab = tabs[0];
       if (tabs.length === 0) {
         tab = await chrome.tabs.create({ url: appContent.aiChatUrl });
@@ -71,13 +111,15 @@ export function useChat(bridge: BexBridge) {
         if (assistantMsg.streaming) {
           assistantMsg.streaming = false;
           error.value = "Timeout error";
+          messages.value = messages.value.filter(
+            (m) => m.id !== assistantMsg.id,
+          );
           //   message
         }
-      }, 30000);
+      }, 30000); // 30 seconds timeout
 
-      bridge.once("receiveChatProxyResponse", async ({ payload }) => {
+      bridge.once("chatProxyResponse", async ({ payload }) => {
         const aiRensponse = payload.text as string[];
-        console.log("aiRensponse", payload);
         clearTimeout(timeoutId);
         aiRensponse.join("\n");
         const messageContent = await marked.parse(aiRensponse.join("\n"));
@@ -87,6 +129,7 @@ export function useChat(bridge: BexBridge) {
           streaming: false,
           content: messageContent,
         });
+        await persistConversation();
 
         if (payload.data) {
           appContent.resume = payload.data as Resume;
@@ -118,9 +161,10 @@ export function useChat(bridge: BexBridge) {
     }
   }
 
-  function clearChat() {
+  async function clearChat() {
     messages.value = [];
     error.value = null;
+    await persistConversation();
   }
 
   return {

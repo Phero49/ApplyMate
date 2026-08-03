@@ -17,3 +17,22 @@ export function getAiPlatformIcon(url: string) {
   }
   return "";
 }
+
+export const platformIcons = [
+  {
+    icon: chatgptIcon,
+    label: "chatgpt",
+  },
+  {
+    icon: qwenIcon,
+    label: "qwen",
+  },
+  {
+    icon: deepseekIcon,
+    label: "deepseek",
+  },
+  {
+    icon: geminiIcon,
+    label: "gemini",
+  },
+];

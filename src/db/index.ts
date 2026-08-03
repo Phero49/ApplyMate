@@ -109,15 +109,63 @@ export interface AppNotification {
   read?: boolean;
 }
 
+export type AiProvider = "chatgpt" | "deepseek" | "gemini" | "qwen";
+
+export interface UserSettings {
+  id: string;
+  defaultAi: AiProvider;
+  remindersEnabled: boolean;
+  reminderIntervalHours: number;
+}
+
+export interface PromptTemplate {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface ChatMessageRecord {
+  id: string;
+  role: "user" | "model";
+  content: string;
+  timestamp: string;
+  streaming?: boolean;
+}
+
+export interface ChatConversation {
+  id: string;
+  title: string;
+  messages: ChatMessageRecord[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ApplyMateDB extends IDBPDatabase {
   profile: UserProfile;
   activities: ApplicationActivity;
   links: SavedLink;
   notifications: AppNotification;
+  settings: UserSettings;
+  prompts: PromptTemplate;
+  chatConversations: ChatConversation;
+}
+/** url and chatUrl are duplicates b4 we did not
+ * have an independent resume without source but now we have hece
+ * url could be null to solve instead of url being the job source its now
+ * the ai chat url and sourceUrl is the job source url if any
+ */
+export interface GeneratedResume {
+  url: string;
+  title: string;
+  sourceUrl?: string;
+  chatUrl: string;
+  resume: any; // The actual resume data structure can be defined more specifically if needed
+  createdAt: string;
 }
 
 const DB_NAME = "applymate_db";
-const DB_VERSION = 5;
+const DB_VERSION = 7;
 
 export async function initDB() {
   return openDB(DB_NAME, DB_VERSION, {
@@ -151,6 +199,15 @@ export async function initDB() {
       }
       if (!db.objectStoreNames.contains("fonts")) {
         db.createObjectStore("fonts", { keyPath: "name" });
+      }
+      if (!db.objectStoreNames.contains("settings")) {
+        db.createObjectStore("settings", { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains("prompts")) {
+        db.createObjectStore("prompts", { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains("chatConversations")) {
+        db.createObjectStore("chatConversations", { keyPath: "id" });
       }
     },
   });
@@ -255,15 +312,13 @@ export async function getStats(): Promise<Stats> {
   };
 }
 
-export async function saveGeneratedResume(resume: any) {
+export async function saveGeneratedResume(resume: GeneratedResume) {
   const db = await initDB();
   return db.put("generatedResumes", {
     ...resume,
     createdAt: new Date().toISOString(),
   });
 }
-
-
 
 export async function getGeneratedResume(url: string) {
   const db = await initDB();
@@ -329,4 +384,51 @@ export async function getFontData(name: string, file: string) {
 export async function deleteFont(name: string) {
   const db = await initDB();
   return db.delete("fonts", name);
+}
+
+export async function saveUserSettings(settings: UserSettings) {
+  const db = await initDB();
+  return db.put("settings", { ...settings, id: "current" });
+}
+
+export async function getUserSettings(): Promise<UserSettings | undefined> {
+  const db = await initDB();
+  return db.get("settings", "current");
+}
+
+export async function savePromptTemplate(prompt: PromptTemplate) {
+  const db = await initDB();
+  return db.put("prompts", prompt);
+}
+
+export async function getPromptTemplates(): Promise<PromptTemplate[]> {
+  const db = await initDB();
+  return db.getAll("prompts");
+}
+
+export async function deletePromptTemplate(id: string) {
+  const db = await initDB();
+  return db.delete("prompts", id);
+}
+
+export async function saveChatConversation(conversation: ChatConversation) {
+  const db = await initDB();
+  return db.put("chatConversations", conversation);
+}
+
+export async function getChatConversation(
+  id: string,
+): Promise<ChatConversation | undefined> {
+  const db = await initDB();
+  return db.get("chatConversations", id);
+}
+
+export async function getChatConversations(): Promise<ChatConversation[]> {
+  const db = await initDB();
+  return db.getAll("chatConversations");
+}
+
+export async function deleteChatConversation(id: string) {
+  const db = await initDB();
+  return db.delete("chatConversations", id);
 }

@@ -5,13 +5,23 @@
       <q-separator class="bg-primary" style="height: 2px" />
     </ContentItem>
 
-    <div class="q-mb-md" v-for="(n, i) in appStore.resume.awards || []" :key="i">
+    <div
+      class="q-mb-md"
+      v-for="(n, i) in appStore.resume.awards || []"
+      :key="i"
+    >
       <ContentItem :itemName="'awards.' + i" section="awards">
         <div class="row justify-between text-bold q-pa-xs">
-          <ContentItem :itemName="'awards.' + i + '.name'" section="awards-item">
+          <ContentItem
+            :itemName="'awards.' + i + '.name'"
+            section="awards-item"
+          >
             <div>{{ n.name }}</div>
           </ContentItem>
-          <ContentItem :itemName="'awards.' + i + '.date'" section="awards-item">
+          <ContentItem
+            :itemName="'awards.' + i + '.date'"
+            section="awards-item"
+          >
             <div>{{ n.date }}</div>
           </ContentItem>
         </div>
@@ -25,7 +35,7 @@
 
       <ul class="q-pl-lg q-mt-xs q-mb-none text-body2">
         <ContentItem
-          v-for="(bullet, j) in n.bullets"
+          v-for="(bullet, j) in n.description"
           :key="j"
           :itemName="'awards.' + i + '.bullets.' + j"
           section="awards-item"

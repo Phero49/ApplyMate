@@ -3,57 +3,23 @@
     <div class="row justify-between">
       <!-- ChatGPT -->
       <q-avatar
-        size="50px"
-        color="blue-grey-8"
-        text-color="white"
-        :icon="'img:' + chatgptIcon"
-        class="cursor-pointer"
-        @click="selectAI('chatgpt')"
-      >
-        <q-badge rounded floating color="red" v-if="defaultAI === 'chatgpt'">
-          <q-icon name="check" />
-        </q-badge>
-      </q-avatar>
-
-      <!-- DeepSeek - white background because icon is blue -->
-      <q-avatar
+        v-for="(value, i) in platformIcons"
+        :key="i"
         size="50px"
         color="white"
-        text-color="black"
-        :icon="'img:' + deepseekIcon"
-        class="cursor-pointer"
-        @click="selectAI('deepseek')"
-      >
-        <q-badge rounded floating color="red" v-if="defaultAI === 'deepseek'">
-          <q-icon name="check" />
-        </q-badge>
-      </q-avatar>
-
-      <!-- Gemini - black background -->
-      <q-avatar
-        size="50px"
-        color="black"
         text-color="white"
-        :icon="'img:' + geminiIcon"
+        :icon="'img:' + value.icon"
         class="cursor-pointer"
-        @click="selectAI('gemini')"
+        @click="selectAI(value.label)"
       >
-        <q-badge rounded floating color="red" v-if="defaultAI === 'gemini'">
-          <q-icon name="check" />
-        </q-badge>
-      </q-avatar>
-
-      <!-- Qwen - white background -->
-      <q-avatar
-        size="50px"
-        color="white"
-        text-color="black"
-        :icon="'img:' + qwenIcon"
-        class="cursor-pointer"
-        @click="selectAI('qwen')"
-      >
-        <q-badge rounded floating color="red" v-if="defaultAI === 'qwen'">
-          <q-icon name="check" />
+        <q-badge
+          :rounded="false"
+          align="bottom"
+          color="red"
+          floating
+          v-if="defaultAI === value.label"
+        >
+          <q-icon size="15px" name="check" />
         </q-badge>
       </q-avatar>
     </div>
@@ -62,12 +28,11 @@
 
 <script lang="ts" setup>
 import { ref, onMounted } from "vue";
-import chatgptIcon from "../assets/chatgpt-icon.svg";
-import deepseekIcon from "../assets/deepseek-logo-icon.svg";
-import geminiIcon from "../assets/google-gemini-icon.svg";
-import qwenIcon from "../assets/qwen-ai-icon.svg";
 
-const defaultAI = ref("deepseek");
+import { getUserSettings } from "src/db";
+import { platformIcons } from "src/utils/platformIcons";
+
+const defaultAI = ref("");
 const emits = defineEmits<{
   (e: "update:modelValue", value: string): void;
 }>();
@@ -77,8 +42,12 @@ const selectAI = (ai: string) => {
   emits("update:modelValue", ai);
 };
 
-onMounted(() => {
-  emits("update:modelValue", defaultAI.value);
+onMounted(async () => {
+  const settings = await getUserSettings();
+  defaultAI.value = settings?.defaultAi || "deepseek";
+  setTimeout(() => {
+    emits("update:modelValue", defaultAI.value);
+  }, 1000);
 });
 </script>
 

@@ -14,7 +14,11 @@
         appStore.resume?.references && appStore.resume?.references.length > 0
       "
     >
-      <div v-for="(ref, i) in appStore.resume?.references" :key="i" class="q-py-xs">
+      <div
+        v-for="(ref, i) in appStore.resume?.references"
+        :key="i"
+        class="q-py-xs"
+      >
         <ContentItem
           :itemName="'references.' + i"
           section="references"
@@ -28,12 +32,8 @@
             <span class="text-italic">{{ ref.company }}</span>
           </ContentItem>
           <span>-</span>
-          <ContentItem :itemName="'references.' + i + '.email'">
-            <span>{{ ref.email }}</span>
-          </ContentItem>
-          <span>-</span>
-          <ContentItem :itemName="'references.' + i + '.phone'">
-            <span>{{ ref.phone }}</span>
+          <ContentItem :itemName="'references.' + i + 'contact'">
+            <span>{{ ref.contact }}</span>
           </ContentItem>
         </ContentItem>
       </div>

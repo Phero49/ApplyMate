@@ -162,7 +162,7 @@
 
 <script setup lang="ts">
 import { ref, nextTick, watch, computed } from "vue";
-import { useChat } from "src/composable/useChat";
+import { useChat, chatMeta } from "src/composable/useChat";
 import { marked } from "marked";
 import { getAiPlatformIcon } from "../utils/platformIcons";
 import { useAppContext } from "src/stores/appStore";
@@ -170,11 +170,16 @@ import { useQuasar } from "quasar";
 import type { BexBridge } from "@quasar/app-vite";
 import SelectAiModels from "src/components/SelectAiModels.vue";
 import { useRoute } from "vue-router";
-import { aiSites } from "app/src-bex/utils/utils";
+import { getPlatformByUrl } from "app/src-bex/utils/utils";
+import { onMounted } from "vue";
+import { getChatConversation } from "src/db";
 
-const aiProvider = ref("deepseek");
 const $q = useQuasar();
 const bex = $q.bex as BexBridge;
+const route = useRoute();
+
+const href = route.query.href as string | undefined;
+const aiProvider = ref(getPlatformByUrl(href || "") || "deepseek");
 const {
   messages,
   isStreaming,
@@ -243,31 +248,58 @@ function onKeyDown(e: KeyboardEvent) {
     void send();
   }
 }
-const route = useRoute();
 async function send() {
   if (!input.value.trim() || isStreaming.value) return;
   const text = input.value;
-  input.value = "";
-  if (route.query.href) {
-    const platform = aiProvider.value as keyof typeof aiSites;
-    const url = aiSites[platform];
-    const tab = await chrome.tabs.create({ url: url, active: false });
-    $q.notify({ message: "opening " + aiProvider.value + " site it might" });
-    if (tab.id == undefined) {
-      return;
+  const url = route.query.href as string | undefined;
+  if (url) {
+    let [tab] = await chrome.tabs.query({ url: url });
+    console.log("input", input.value);
+    if (tab == undefined) {
+      tab = await chrome.tabs.create({
+        url: (route.query.href as string) || "",
+        active: false,
+      });
+      const n = $q.notify({
+        position: "top-left",
+        message:
+          "opening " + aiProvider.value + " site it might  take some time",
+        group: false,
+        spinner: true,
+        color: "red-8",
+      });
+      bex.once("aiSiteWindowLoaded", () => {
+        n({
+          message:
+            aiProvider.value +
+            " window has loaded waiting for input to be ready",
+          spinner: true,
+          color: "blue-6",
+        });
+      });
+      bex.once("aiSiteReady", () => {
+        n({
+          message: aiProvider.value + " is now ready to receive inputs",
+          spinner: false,
+          icon: "check",
+          timeout: 2000,
+          color: "green-6",
+        });
+
+        void sendMessage(text, url);
+      });
+    } else {
+      await sendMessage(text, url);
     }
-    setTimeout(() => {
-      void chrome.tabs.sendMessage(tab.id!, { type: "newChat", message: text });
-      // void sendMessage(text);
-    }, 5000);
-  } else {
-    await sendMessage(text);
   }
+  input.value = "";
 }
 
 async function sendQuickAction(prompt: string) {
   input.value = "";
-  await sendMessage(prompt);
+  const url = route.query.href as string | undefined;
+
+  await sendMessage(prompt, url || "");
 }
 
 function renderMarkdown(text: string): string {
@@ -277,6 +309,20 @@ function renderMarkdown(text: string): string {
     return text;
   }
 }
+
+onMounted(async () => {
+  const chat = await getChatConversation(href || "");
+  if (chat) {
+    messages.value = chat.messages.map((v) => {
+      return {
+        ...v,
+        timestamp: new Date(v.timestamp),
+      };
+    });
+    chatMeta.id = chat.id;
+    chatMeta.title = chat.title;
+  }
+});
 </script>
 
 <style scoped>

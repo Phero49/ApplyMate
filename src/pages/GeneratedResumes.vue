@@ -180,6 +180,64 @@
       </q-card>
     </q-dialog>
   </q-page>
+
+  <q-dialog v-model="writeFirstMessage" persistent>
+    <q-card
+      flat
+      class="rounded-borders"
+      bordered
+      style="width: 100%; max-width: 500px"
+    >
+      <div class="text-h6 q-py-md text-center">Tell the AI your thought</div>
+      <q-form @submit.prevent="sendMessage">
+        <q-card-section class="q-gutter-y-md">
+          <q-input
+            v-model="firstMessage"
+            type="textarea"
+            filled
+            autogrow
+            label="write your first message"
+          />
+          <div>
+            <q-toggle
+              v-model="includeProfile"
+              label="include your profile data"
+              color="green"
+            />
+          </div>
+          <div>
+            <q-toggle
+              v-model="includePrompt"
+              label="attach a prompt"
+              color="green"
+            />
+          </div>
+          <div v-if="includePrompt">
+            <q-select
+              v-model="selectedPrompt"
+              :options="['default']"
+              label="select prompts"
+              filled
+            />
+          </div>
+          <div>
+            <select-ai-models @update:model-value="(v) => (aiProvider = v)" />
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" color="primary" v-close-popup />
+          <q-btn
+            flat
+            label="send message"
+            color="primary"
+            type="submit"
+            v-close-popup
+          />
+        </q-card-actions>
+      </q-form>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script setup lang="ts">
@@ -187,8 +245,9 @@ import { getAllGeneratedResumes, initDB } from "src/db";
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar";
-import { aiSites } from "app/src-bex/utils/utils";
 import type { BexBridge } from "@quasar/app-vite";
+import SelectAiModels from "src/components/SelectAiModels.vue";
+import { useGenerateNewAiResume } from "src/composable/generateNewResume";
 
 interface GeneratedResume {
   url: string;
@@ -200,6 +259,16 @@ interface GeneratedResume {
 const router = useRouter();
 const $q = useQuasar();
 const bex = $q.bex as BexBridge;
+const {
+  writeFirstMessage,
+  firstMessage,
+  includeProfile,
+  includePrompt,
+  selectedPrompt,
+  aiProvider,
+  createNewResume,
+  sendMessage,
+} = useGenerateNewAiResume(bex, router);
 const resumes = ref<GeneratedResume[]>([]);
 const loading = ref(true);
 const deleteDialog = ref(false);
@@ -271,24 +340,6 @@ function formatDate(dateStr: string | null): string {
     day: "numeric",
     year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
   });
-}
-const aiProvider = ref("deepseek");
-async function createNewResume() {
-  const url = aiSites["deepseek"];
-  const tab = await chrome.tabs.create({ url: url, active: false });
-  $q.notify({ message: "opening " + aiProvider.value + " site it might" });
-  if (tab.id == undefined) {
-    return;
-  }
-  setTimeout(() => {
-    void chrome.tabs.sendMessage(tab.id!, {
-      type: "newChat",
-      payload: "later i will ask you to help me craft a resume/cv  ",
-    });
-    bex.once("receiveChatProxyResponse", (p) => {
-      console.log(p, "recieved message");
-    });
-  }, 5000);
 }
 </script>
 

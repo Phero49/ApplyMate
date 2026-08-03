@@ -1,5 +1,6 @@
 <template>
   <q-card style="width: 100%" flat bordered class="q-pa-md font-uploader-card">
+    <slot name="top" />
     <q-card-section>
       <div class="text-h6 text-primary">Font Uploader (Blob Storage)</div>
       <div class="text-subtitle2 text-grey-6">
@@ -85,6 +86,7 @@
         :loading="saving"
         icon="save"
       />
+      <slot name="actions"/>
     </q-card-actions>
   </q-card>
 </template>
@@ -117,12 +119,12 @@ const save = async () => {
   try {
     const fontDef: FontDefinition = {
       name: fontName.value,
-      normal: files.normal as Blob,
+      normal: files.normal,
     };
 
-    if (files.bold) fontDef.bold = files.bold as Blob;
-    if (files.italics) fontDef.italics = files.italics as Blob;
-    if (files.bolditalics) fontDef.bolditalics = files.bolditalics as Blob;
+    if (files.bold) fontDef.bold = files.bold;
+    if (files.italics) fontDef.italics = files.italics;
+    if (files.bolditalics) fontDef.bolditalics = files.bolditalics;
 
     await saveFont(fontDef);
 

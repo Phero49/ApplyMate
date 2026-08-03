@@ -37,10 +37,11 @@
     </q-drawer>
 
     <q-page-container>
-      <q-page v-if="resume">
+      <q-page>
         <div>
           <div class="bg-grey-4 q-pt-md text-black row justify-center">
             <div
+              v-if="resume && Object.keys(resume).length > 0"
               class="bg-white q-pa-lg resume-root"
               style="width: 210mm"
               :style="{ fontFamily: selectedFont }"
@@ -116,12 +117,22 @@
                 </div>
               </div>
             </div>
+            <div
+              v-else
+              class="bg-grey-3 q-pa-lg resume-root"
+              style="
+                width: 210mm;
+                height: calc(100vh - 67px);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              "
+            >
+              <div class="text-center text-h6">No resume generated yet</div>
+            </div>
           </div>
         </div>
       </q-page>
-      <q-inner-loading :showing="!resume">
-        <q-spinner-ios size="50px" color="primary" />
-      </q-inner-loading>
     </q-page-container>
   </q-layout>
 </template>
@@ -195,7 +206,7 @@ onMounted(async () => {
   if (key) {
     const resumeData = await getGeneratedResume(key as string);
     console.log(resumeData, key);
-    appStore.resume = resumeData.resume;
+    appStore.resume = resumeData.resume == "" ? {} : resumeData.resume;
     appStore.resumeData = resumeData;
     appStore.aiChatUrl = resumeData.chatUrl;
   }

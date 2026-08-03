@@ -52,7 +52,6 @@ const AI_SITES = {
 const AI_HOSTNAMES = Object.keys(AI_SITES) as Array<keyof typeof AI_SITES>;
 
 let currentSelector = "";
-let maxRetries = 100;
 function getElementBySelector(selector: string) {
   if (selector === "rich-textarea") {
     return getGeminiInput();
@@ -60,15 +59,48 @@ function getElementBySelector(selector: string) {
   return document.querySelector<HTMLElement>(selector);
 }
 
-const waitForSelector = (selector: string) => {
-  return new Promise((resolve) => {
-    currentSelector = selector;
+/**
+ * Waits for an element matching the given selector to appear in the DOM.
+ *
+ * The DOM is checked once every second for up to 75 attempts (75 seconds).
+ *
+ * @param selector - The selector used to locate the element.
+ * @returns A promise that resolves with the found element or rejects if it
+ *          cannot be found within the timeout period.
+ */
+const waitForSelector = (selector: string): Promise<Element> => {
+  // Maximum number of polling attempts (75 seconds).
+  const maxAttempts = 75;
+
+  // Tracks how many times we've checked for the element.
+  let attempts = 0;
+
+  // Store the selector so other parts of the extension know what we're waiting for.
+  currentSelector = selector;
+
+  return new Promise((resolve, reject) => {
     const interval = setInterval(() => {
+      attempts++;
+
+      // Try to locate the element.
       const element = getElementBySelector(selector);
-      maxRetries--;
-      if (element || maxRetries === 0) {
+
+      // Resolve immediately when the element is found.
+      if (element) {
         clearInterval(interval);
-        resolve(element || null);
+        resolve(element);
+        return;
+      }
+
+      // Stop polling after the maximum number of attempts.
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+
+        reject(
+          new Error(
+            "Failed to locate the input field. Please make sure you're logged in or check your network connection.",
+          ),
+        );
       }
     }, 1000);
   });
@@ -79,7 +111,7 @@ const fillInput = (
   value: string,
   timeoutMs: number = 5000,
 ): Promise<void> => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const startTime = Date.now();
     let intervalId: NodeJS.Timeout | null = null;
     let timeoutId: NodeJS.Timeout | null = null;
@@ -133,27 +165,64 @@ const getPageInfo = () => {
   const url = new URL(icon || "", location.origin).href;
   return {
     url: window.location.href,
-    title: document.title,
+    title: document.querySelector("title")?.textContent || "unknown title",
     port: bridge.portName,
     favIconUrl: url,
   };
 };
 
-// Initialize AI site detection
+/**
+ * Initializes AI site detection.
+ *
+ * If the current page belongs to a supported AI website, this function waits
+ * for the site's main input element to become available before notifying the
+ * background script that the site is ready.
+ */
 const initializeAISite = async () => {
-  if (!AI_HOSTNAMES.includes(window.location.hostname as any)) return;
+  try {
+    // Exit early if the current website is not supported.
+    if (!AI_HOSTNAMES.includes(window.location.hostname as any)) {
+      return;
+    }
 
-  const selector =
-    AI_SITES[window.location.hostname as keyof typeof AI_SITES]();
-  await waitForSelector(selector);
+    // Get the selector for the current AI website.
+    const selector =
+      AI_SITES[window.location.hostname as keyof typeof AI_SITES]();
 
-  void bridge.send({
-    event: "aiSiteLoaded",
-    payload: getPageInfo(),
-    to: "background",
-  });
+    void bridge.send({
+      event: "aiSiteWindowLoaded",
+      to: "app",
+    });
+    // Wait until the site's input element is available.
+    await waitForSelector(selector);
+
+    // Notify the background script that the AI site has finished loading.
+    void bridge.send({
+      event: "aiSiteLoaded",
+      payload: getPageInfo(),
+      to: "background",
+    });
+
+    void bridge.send({
+      event: "aiSiteReady",
+      to: "app",
+    });
+  } catch (error) {
+    // Log the error for debugging purposes.
+    console.error("Failed to initialize AI site detection:", error);
+
+    // Notify the background script that initialization failed.
+    void bridge.send({
+      event: "aiSiteLoadError",
+      payload: {
+        message:
+          error instanceof Error ? error.message : "Unknown error occurred.",
+        hostname: window.location.hostname,
+      },
+      to: "background",
+    });
+  }
 };
-
 // Message handlers
 
 const messageListeners: Record<string, (data?: any) => any> = {
@@ -206,24 +275,46 @@ const messageListeners: Record<string, (data?: any) => any> = {
   async newChat({ payload }) {
     await initializeAISite();
     await waitForSelector(currentSelector);
-    console.log("selector ready");
-    messageListeners["chatProxy"]!({ message: payload });
+    await fillInput(currentSelector, payload);
+    watchAiGeneration((data, text) => {
+      setTimeout(() => {
+        console.log("-------->", getPageInfo(), document.title);
+        void bridge.send({
+          event: "firstMessageResponse",
+          payload: {
+            mgs: {
+              data,
+              text,
+            },
+            window: getPageInfo(),
+          },
+          to: "app",
+        });
+      }, 2000);
+    });
+
+    setTimeout(() => {
+      dispatchEnter(document.querySelector(currentSelector) as HTMLElement);
+    }, 2000);
+    //messageListeners["chatProxy"]!({ message: payload });
   },
-  chatProxy: async ({ message }) => {
-    await fillInput(currentSelector, message);
+  chatProxy: async (payload) => {
+    const msg = payload.message as string;
+    await fillInput(currentSelector, msg);
     watchAiGeneration((data, text) => {
       void bridge.send({
         event: "chatProxyResponse",
         payload: {
           data,
           text,
+          window: getPageInfo(),
         },
-        to: "background",
+        to: "app",
       });
     });
     setTimeout(() => {
       dispatchEnter(document.querySelector(currentSelector) as HTMLElement);
-    }, 3500);
+    }, 2000);
   },
 };
 // Chrome runtime message handler
@@ -243,7 +334,8 @@ bridge.on("generate-resume", async ({ payload }) => {
       event: "resumeGenerated",
       payload: {
         resume: data,
-        url: payload.url,
+        url: window.location.href,
+        sourceUrl: payload.url,
         chatUrl: window.location.href,
         title: payload.title,
       },

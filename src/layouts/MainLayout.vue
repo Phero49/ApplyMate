@@ -74,6 +74,12 @@ const linksList: EssentialLinkProps[] = [
     icon: "person",
     link: "/app/profile",
   },
+  {
+    title: "Settings",
+    caption: "Fonts, prompts & reminders",
+    icon: "settings",
+    link: "/app/settings",
+  },
 ];
 
 const leftDrawerOpen = ref(false);
