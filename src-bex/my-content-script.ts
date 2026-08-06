@@ -14,6 +14,7 @@ import {
   createNotification,
   type NotificationData,
 } from "./utils/notification";
+import { jsonSchema } from "./assets/schema";
 
 const bridge = createBridge({ debug: false });
 
@@ -326,7 +327,11 @@ chrome.runtime.onMessage.addListener((message, sender, response) => {
 });
 
 bridge.on("generate-resume", async ({ payload }) => {
-  const prompt = `${resumeGenerationPrompt}\n\nUSER'S RAW DATA:\n${payload.resumeData}\n\nTARGET JOB DESCRIPTION:\n${payload.jobDescription}\n\n Now, generate the optimized resume using only the user data provided and the job description.`;
+  const prompt = `${resumeGenerationPrompt}\n\nUSER'S RAW DATA:\n${payload.resumeData}\n\nTARGET JOB DESCRIPTION:\n${payload.jobDescription}\n\n 
+  \n\n Expected resume json structure  \n\n
+   ${jsonSchema}
+\n\n
+  Now, generate the optimized resume using only the user data provided and the job description.`;
   await fillInput(currentSelector, prompt);
   watchAiGeneration((data) => {
     console.log(data, "data resume");
