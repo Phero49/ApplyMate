@@ -1,6 +1,6 @@
 
 
-## 📝 Privacy Policy for Apply mate
+## Privacy Policy for Apply mate
 
 ### Last Updated: [Insert Date]
 
