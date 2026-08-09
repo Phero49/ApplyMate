@@ -84,9 +84,9 @@ Because this project is a browser extension, the development workflow should be 
 
 Sample demo video placeholder:
 
-```html
+
 <iframe width="560" height="315" src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="Sample YouTube video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-```
+
 
 Replace this with your own demo video when ready.
 
