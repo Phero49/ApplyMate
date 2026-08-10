@@ -116,6 +116,7 @@ export interface UserSettings {
   defaultAi: AiProvider;
   remindersEnabled: boolean;
   reminderIntervalHours: number;
+  defaultFont: string;
 }
 
 export interface PromptTemplate {
@@ -350,26 +351,38 @@ export async function saveFont(font: FontDefinition) {
   return db.put("fonts", font);
 }
 
-export async function getFonts(): Promise<FontDefinition[]> {
+export async function getFonts(): Promise<FontsList> {
   const db = await initDB();
-  return db.getAll("fonts");
+  const fonts: FontDefinition[] = await db.getAll("fonts");
+  const fontsLinks = [];
+
+  for (const v of fonts) {
+    try {
+      const fontUrl = await getFontAsUrl(v.name);
+      fontsLinks.push({ name: v.name, fontUrl });
+    } catch (error) {
+      // One broken Blob won't crash the whole font list
+      console.error(`Skipping broken font: ${v.name}`, error);
+    }
+  }
+
+  return fontsLinks;
 }
 
 export async function getFontAsUrl(name: string) {
   const db = await initDB();
   const font = await db.get("fonts", name);
   if (!font) return null;
-  console.log(font);
   return {
-    normal: `https://fonts.applyMate.com/${font.normal.name}?font-name=${name}`,
+    normal: `https://fonts.applyMate.com/${font.normal.name}?font-family=${name}`,
     bold: font.bold
-      ? `https://fonts.applyMate.com/${font.bold.name}?font-name=${name}`
+      ? `https://fonts.applyMate.com/${font.bold.name}?font-family=${name}`
       : undefined,
     italics: font.italics
-      ? `https://fonts.applyMate.com/${font.italics.name}?font-name=${name}`
+      ? `https://fonts.applyMate.com/${font.italics.name}?font-family=${name}`
       : undefined,
     bolditalics: font.bolditalics
-      ? `https://fonts.applyMate.com/${font.bolditalics.name}?font-name=${name}`
+      ? `https://fonts.applyMate.com/${font.bolditalics.name}?font-family=${name}`
       : undefined,
   };
 }

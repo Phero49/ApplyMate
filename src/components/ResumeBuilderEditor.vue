@@ -11,37 +11,15 @@
       />
     </q-tabs>
     <q-tab-panels v-model="tab" animated>
-      <q-tab-panel name="contents">
-        <q-list dense>
-          <q-item
-            class="text-capitalize text-grey"
-            v-for="(section, key) in sections"
-            :key="key"
-            clickable
-            v-close-popup
-          >
-            <q-item-section>
-              <q-item-label class="text-subtitle2">{{ key }}</q-item-label>
-            </q-item-section>
-            <q-item-section side>
-              <q-checkbox v-model="sections[key].include" />
-            </q-item-section>
-          </q-item>
-        </q-list>
-      </q-tab-panel>
       <q-tab-panel name="layout">
-        <q-list bordered>
+        <q-list>
           <q-item
             clickable
             v-ripple
             v-for="layout in availableLayouts"
             :key="layout.name"
-            @click="currentSelectedLayout = layout"
-            :disable="layout.name != 'vertical'"
+            @click="appStore.resume.layout = layout.name"
           >
-            <q-tooltip v-if="layout.name != 'vertical'">
-              vertical is only available for now
-            </q-tooltip>
             <q-item-section avatar>
               <q-icon color="primary" :name="layout.icon" />
             </q-item-section>
@@ -49,7 +27,7 @@
               layout.name + " " + (layout.columnSide || "")
             }}</q-item-section>
             <q-item-section side>
-              <q-radio v-model="currentSelectedLayout" :val="layout" />
+              <q-radio v-model="appStore.resume.layout" :val="layout.name" />
             </q-item-section>
           </q-item>
         </q-list>
@@ -67,17 +45,16 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { symRoundedGridLayoutSide } from "@quasar/extras/material-symbols-rounded";
-import {
-  availableLayouts,
-  currentSelectedLayout,
-  sections,
-} from "src/composable/resumeBuilder";
+import { availableLayouts } from "src/composable/resumeBuilder";
 import FormatText from "./resumeBuilder/formatText.vue";
 import ResumeChat from "./ResumeChat.vue";
 import { useDomStore } from "src/stores/dom";
 import { watch } from "vue";
-const tab = ref("contents");
+import { useAppContext } from "src/stores/appStore.js";
+const tab = ref("AI");
 const domStore = useDomStore();
+const appStore = useAppContext();
+
 watch(
   () => domStore.selectedElement,
   (el) => {
@@ -87,10 +64,6 @@ watch(
   },
 );
 const mainNav = [
-  {
-    icon: "edit_note",
-    label: "contents",
-  },
   {
     icon: symRoundedGridLayoutSide,
     label: "layout",

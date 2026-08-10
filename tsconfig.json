@@ -1,6 +1,11 @@
 {
   "compilerOptions": {
-    "types": ["chrome"]
+    "types": [
+      "chrome"
+    ],
+    "lib": [
+      "WebWorker"
+    ]
   },
   "extends": "./.quasar/tsconfig.json"
 }

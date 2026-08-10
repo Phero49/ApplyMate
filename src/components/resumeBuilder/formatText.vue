@@ -27,9 +27,9 @@
         @click="applyStyle('textDecoration', 'underline')"
       />
     </div>
-
+    <q-separator spaced />
     <!-- alignment -->
-    <div class="text-subtitle1 q-mt-md">Alignment</div>
+    <!-- <div class="text-subtitle1 q-mt-md">Alignment</div>
     <div class="row justify-between no-wrap">
       <q-btn
         icon="bi-text-left"
@@ -59,14 +59,14 @@
         size="sm"
         @click="applyStyle('textAlign', 'justify')"
       />
-    </div>
+    </div> -->
     <div class="q-my-md">
       <q-select
-        v-model="domStore.font"
+        v-model="appStore.selectedFont"
         type="text"
         label="fonts"
         dense
-        :options="fontOptions"
+        :options="appStore.resumeFonts.map((v) => v.name)"
         stack-label
         filled
       >
@@ -147,30 +147,6 @@
     </div>
   </div>
 
-  <div class="row q-mt-md justify-between">
-    <div class="text-center">
-      <div>primary color</div>
-      <div class="row justify-center">
-        <q-avatar size="32px" :style="{ cursor: 'pointer' }">
-          <div
-            :style="{ backgroundColor: domStore.primaryColor }"
-            style="width: 100%; height: 100%; border-radius: 50%"
-          ></div>
-          <q-menu>
-            <q-color
-              v-model="domStore.primaryColor"
-              @update:model-value="
-                applyStyle('backgroundColor', domStore.primaryColor)
-              "
-              no-header
-              no-footer
-              class="my-picker"
-            />
-          </q-menu>
-        </q-avatar>
-      </div>
-    </div>
-  </div>
   <q-separator spaced />
   <div>
     <q-item clickable @click="domStore.removeSelected">
@@ -214,7 +190,9 @@ import { ref, onMounted, onUnmounted } from "vue";
 import { applyStyle, useDomStore } from "src/stores/dom";
 import { watch } from "vue";
 import UploadFonts from "src/components/uploadFonts.vue";
+import { useAppContext } from "src/stores/appStore";
 
+const appStore = useAppContext();
 const dialog = ref(false);
 const textColor = ref("#000000");
 const bgColor = ref("#ffffff");

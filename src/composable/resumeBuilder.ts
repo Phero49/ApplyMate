@@ -12,7 +12,7 @@ import { useDomStore } from "src/stores/dom";
 
 interface Layout {
   icon: string;
-  name: string;
+  name: "vertical" | "two-column";
   columnSide?: "left" | "right";
 }
 
@@ -26,32 +26,14 @@ export const availableLayouts = reactive<Layout[]>([
     icon: biLayoutSidebar,
     columnSide: "left",
   },
-  {
-    name: "two columns",
-    icon: biLayoutSidebar,
-    columnSide: "right",
-  },
 ]);
-export const currentSelectedLayout = ref<Layout>(availableLayouts[0]!);
-
-export const sections = reactive({
-  header: { include: true },
-  contact: { include: true },
-  summary: { include: true },
-  experience: { include: true },
-  education: { include: true },
-  skills: { include: true },
-  certifications: { include: true },
-  projects: { include: true },
-  awards: { include: true },
-  languages: { include: true },
-  volunteering: { include: false },
-  references: { include: false },
-});
-
-type SectionKey = keyof typeof sections;
-
 const appStore = useAppContext();
+
+
+
+
+
+
 const domStore = useDomStore();
 
 function getPdfStyle(itemName: string) {
