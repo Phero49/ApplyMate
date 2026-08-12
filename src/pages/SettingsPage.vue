@@ -221,18 +221,32 @@
           </div>
 
           <div v-else class="font-list">
-            <div v-for="font in fonts" :key="font.name" class="font-item">
-              <div class="font-preview" :style="{ fontFamily: font.name }">
-                Aa
+            <div v-for="font in fonts" :key="font" class="font-item">
+              <div class="font-preview">Aa</div>
+              <div class="font-item-name">
+                {{ font }}
+                <q-btn
+                  :color="settings.defaultFont == 'name' ? 'green' : 'grey'"
+                  round
+                  dense
+                  class="q-ml-md"
+                  size="sm"
+                  :icon="settings.defaultFont == 'name' ? 'check' : 'circle'"
+                  @click="
+                    () => {
+                      settings.defaultFont = font;
+                      saveSettings();
+                    }
+                  "
+                />
               </div>
-              <div class="font-item-name">{{ font.name }}</div>
               <q-btn
                 flat
                 dense
                 round
                 icon="delete_outline"
                 class="delete-btn"
-                @click="deleteFontEntry(font.name)"
+                @click="deleteFontEntry(font)"
               />
             </div>
           </div>
@@ -251,6 +265,13 @@
       </UploadFonts>
     </div>
   </q-dialog>
+  <q-dialog v-model="previewFont.dialog">
+    <q-card>
+      <q-card-section class="text-center text-subtitle1">
+        {{ previewFont.font }}
+      </q-card-section>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script setup lang="ts">
@@ -267,15 +288,19 @@ import {
   savePromptTemplate,
   saveUserSettings,
   type AiProvider,
-  type FontDefinition,
   type PromptTemplate,
   type UserSettings,
 } from "src/db";
+import { reactive } from "vue";
 
 const $q = useQuasar();
 
 const activeTab = ref<"general" | "prompts" | "fonts">("general");
-
+const previewFont = reactive({
+  dialog: false,
+  font: "",
+  textSample: "",
+});
 const selectedAi = ref<AiProvider>("deepseek");
 const uploadNewFont = ref(false);
 const settings = ref<UserSettings>({
@@ -283,11 +308,12 @@ const settings = ref<UserSettings>({
   defaultAi: "deepseek",
   remindersEnabled: true,
   reminderIntervalHours: 24,
+  defaultFont: "Arial",
 });
 const promptTitle = ref("");
 const promptContent = ref("");
 const prompts = ref<PromptTemplate[]>([]);
-const fonts = ref<FontDefinition[]>([]);
+const fonts = ref<string[]>([]);
 
 const intervalPreview = computed(() => {
   const hours = settings.value.reminderIntervalHours;
@@ -313,7 +339,7 @@ const loadSavedPrompts = async () => {
 };
 
 const loadFonts = async () => {
-  fonts.value = await getFonts();
+  fonts.value = (await getFonts()).map((v) => v.name);
   console.log(fonts.value);
 };
 
