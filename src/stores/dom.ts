@@ -13,8 +13,6 @@ export const useDomStore = defineStore("dom", {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     styles: {} as { [key: string]: Record<string, string | boolean | number> },
     font: "",
-    primaryColor: "#f97316",
-    lineColor: "#f97316",
     fontSize: "",
     selectedElement: null as HTMLElement | null,
     selectedSection: null as string | null,

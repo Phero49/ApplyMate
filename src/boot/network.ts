@@ -11,7 +11,7 @@ export default defineBoot((/* { app, router, ... } */) => {
     if (typeof url === "string" && url.includes("fonts.applyMate.com")) {
       const urlObj = new URL(url);
       const fontId = urlObj.pathname.split("/").pop();
-      const fontName = urlObj.searchParams.get("font-name");
+      const fontName = urlObj.searchParams.get("font-family");
       const fontBlob = await getFontData(fontName || "", fontId || "");
 
       // Return a fake Response with proper headers

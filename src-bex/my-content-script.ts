@@ -8,14 +8,13 @@
  */
 import { createBridge } from "#q-app/bex/content";
 import resumeGenerationPrompt from "./assets/prompts/resumeGenerationPrompt.txt?raw";
+import jsonSchema from "./assets/schema.txt?raw";
 import { Readability } from "@mozilla/readability";
 import { fillFromAIMappings, prepareFormForAI } from "./utils/utils";
 import {
   createNotification,
   type NotificationData,
 } from "./utils/notification";
-import { jsonSchema } from "./assets/schema";
-
 const bridge = createBridge({ debug: false });
 
 declare module "@quasar/app-vite" {
@@ -194,6 +193,7 @@ const initializeAISite = async () => {
       event: "aiSiteWindowLoaded",
       to: "app",
     });
+
     // Wait until the site's input element is available.
     await waitForSelector(selector);
 
@@ -279,7 +279,6 @@ const messageListeners: Record<string, (data?: any) => any> = {
     await fillInput(currentSelector, payload);
     watchAiGeneration((data, text) => {
       setTimeout(() => {
-        console.log("-------->", getPageInfo(), document.title);
         void bridge.send({
           event: "firstMessageResponse",
           payload: {
@@ -414,6 +413,7 @@ function watchAiGeneration(callback: (data: any, text?: string[]) => void) {
 
   // Trigger the main-world interceptor for this provider
   window.postMessage({ type: "listenToAi" }, location.origin);
+  let attempts = 3;
 
   window.addEventListener("message", (event) => {
     if (event.data.type === "chat-response-ready") {
@@ -423,10 +423,47 @@ function watchAiGeneration(callback: (data: any, text?: string[]) => void) {
       const jsonString = secondPart?.[0] || null;
       const noneCodeBlock = [parts[0], secondPart?.[1]];
 
-      const json =
-        jsonString && jsonString.length > 2 ? JSON.parse(jsonString || "") : "";
-      console.log(json, noneCodeBlock, "response from ai");
+      let json = "";
+
+      if (jsonString && jsonString.length > 2) {
+        try {
+          const parsedJson = JSON.parse(jsonString || "{}");
+          json = parsedJson;
+        } catch (e) {
+          if (attempts > 0) {
+            const message = `an error occurred with the json block: ${e as any} 
+  ----
+  ###Tips ###
+  the parser always assume the first json block is the resume json data also make sure you also provide a valid json 
+  code block can be parsed with javascript json parser`;
+            void fillInput(currentSelector, message);
+            dispatchEnter(document.querySelector(currentSelector)!);
+            const msg =
+              "the model responded but an error occurred processing  the response attempting a try again ";
+            if (bridge.portList.includes("app")) {
+              void bridge.send({
+                event: "responseError",
+                to: "app",
+                payload: msg,
+              });
+            }
+            createNotification({ message: msg, type: "negative" });
+
+            attempts--;
+            return;
+          } else {
+            attempts = 3;
+            void bridge.send({
+              event: "communicationError",
+              to: "app",
+              payload:
+                "Failed to get prompt in the right form after 3 attempts ",
+            });
+          }
+        }
+      }
       callback(json, noneCodeBlock);
+      attempts = 3;
     }
   });
 
