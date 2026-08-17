@@ -1,37 +1,49 @@
 <template>
   <q-layout view="hHh LpR fFf">
-    <q-header bordered class="bg-white text-black">
+    <q-header bordered class="bg-dark text-white">
       <q-toolbar>
         <q-btn flat dense round icon="arrow_back" @click="$router.back()" />
         <q-toolbar-title>Resume Builder</q-toolbar-title>
         <q-btn
           icon="undo"
           unelevated
-          outline
-          color="grey-10"
+          size="sm"
+          flat
           @click="domStore.undo()"
           :disable="domStore.undoStack.length === 0"
         >
           <q-tooltip>Undo (Ctrl+Z)</q-tooltip>
         </q-btn>
-        <q-separator vertical spaced />
 
         <q-btn
           icon="redo"
           unelevated
-          outline
-          color="grey-10"
+          flat
+          size="sm"
           @click="domStore.redo()"
           :disable="domStore.redoStack.length === 0"
+          color="white"
         >
           <q-tooltip>Redo (Ctrl+Y)</q-tooltip>
         </q-btn>
         <q-separator vertical spaced />
-        <q-btn label="Export to PDF" color="black" @click="exportToPDF" />
+        <q-btn
+          unelevated
+          no-caps
+          label="Export to PDF"
+          color="primary"
+          @click="exportToPDF"
+        />
       </q-toolbar>
     </q-header>
-    <q-drawer show-if-above v-model="leftDrawerOpen" :width="340" side="left">
-      <q-scroll-area style="overflow-x: hidden" class="fit q-pr-md">
+    <q-drawer
+      bordered
+      show-if-above
+      v-model="leftDrawerOpen"
+      :width="400"
+      side="left"
+    >
+      <q-scroll-area style="overflow-x: hidden" class="fit">
         <resume-builder-editor />
       </q-scroll-area>
     </q-drawer>
@@ -39,7 +51,7 @@
     <q-page-container>
       <q-page>
         <div>
-          <div class="bg-grey-4 q-pt-md text-black row justify-center">
+          <div class="q-pt-md text-black row justify-center">
             <div
               v-if="resume && Object.keys(resume).length > 0"
               class="bg-white q-pa-lg resume-root"
