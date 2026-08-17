@@ -1,6 +1,16 @@
 <template>
   <div>
-    <q-tabs dense no-caps v-model="tab" align="center">
+    <q-tabs
+      class="bg-blue-grey-10"
+      active-bg-color="grey-9"
+      dense
+      active-class="active-class"
+      no-caps
+      shrink
+      indicator-color="transparent"
+      v-model="tab"
+      align="center"
+    >
       <q-tab
         v-for="(item, key) in mainNav"
         :name="item.label"
@@ -79,4 +89,23 @@ const mainNav = [
 ];
 </script>
 
-<style scoped></style>
+<style>
+.active-class {
+  border-radius: 15px;
+  margin: 5px;
+}
+/* For code blocks */
+pre,
+code {
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-width: 100%;
+}
+
+/* For tables */
+.table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+}
+</style>

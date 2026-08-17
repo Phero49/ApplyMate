@@ -197,16 +197,7 @@ const dialog = ref(false);
 const textColor = ref("#000000");
 const bgColor = ref("#ffffff");
 defineProps<{ additionalInfo?: boolean; isMenu?: boolean }>();
-const fontOptions = [
-  "Roboto",
-  "Arial",
-  "Times New Roman",
-  "Courier New",
-  "Verdana",
-  "Georgia",
-  "Helvetica",
-  "Trebuchet MS",
-];
+
 const domStore = useDomStore();
 const fontSize = ref();
 const fontSizes = ref([8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48]);
