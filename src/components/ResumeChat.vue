@@ -11,6 +11,7 @@
           <q-field
             :disable="$route.query.href != undefined"
             dense
+            borderless
             v-model="aiProvider"
             class="text-white"
             label="Select AI site"
@@ -26,7 +27,7 @@
             <template #prepend>
               <div>
                 <div>
-                  <q-avatar class="chat-model-dot" size="30px">
+                  <q-avatar class="chat-model-dot" size="25px">
                     <img :src="aiIcons" alt="" />
                   </q-avatar>
                 </div>
@@ -243,6 +244,9 @@ function scrollToBottom() {
 }
 
 function onKeyDown(e: KeyboardEvent) {
+  if (isStreaming.value) {
+    return;
+  }
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     void send();
@@ -321,6 +325,12 @@ onMounted(async () => {
     });
     chatMeta.id = chat.id;
     chatMeta.title = chat.title;
+  }
+});
+bex.on("responseChunk", ({ payload }) => {
+  const last = messages.value.at(-1);
+  if (last && last.role == "model") {
+    last.content = payload.text;
   }
 });
 </script>
