@@ -13,7 +13,6 @@ export default defineBoot((/* { app, router, ... } */) => {
       const fontId = urlObj.pathname.split("/").pop();
       const fontName = urlObj.searchParams.get("font-family");
       const fontBlob = await getFontData(fontName || "", fontId || "");
-
       // Return a fake Response with proper headers
       return new Response(fontBlob, {
         status: 200,

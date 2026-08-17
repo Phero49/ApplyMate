@@ -185,6 +185,7 @@ const {
   messages,
   isStreaming,
   error,
+  cancelTimeout,
 
   sendMessage,
 } = useChat(bex);
@@ -327,10 +328,12 @@ onMounted(async () => {
     chatMeta.title = chat.title;
   }
 });
-bex.on("responseChunk", ({ payload }) => {
+bex.on("responseChunk", async ({ payload }) => {
   const last = messages.value.at(-1);
+
   if (last && last.role == "model") {
-    last.content = payload.text;
+    last.content = await marked.parse((payload.text || []).join(" "));
+    cancelTimeout();
   }
 });
 </script>

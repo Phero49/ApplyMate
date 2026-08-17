@@ -1,0 +1,95 @@
+
+12. **JSON Format:** Return the resume in JSON format with the following structure:
+   
+
+   {
+  layout?: "vertical" | "two-column";
+
+  // Styles as CSS strings — simple, flexible, LLM-friendly
+  style?: {
+    // Global styles
+    titleStyle?: string; // "font-weight:bold; font-size:16px; color:#1f2937;"
+    bodyStyle?: string; // "font-size:14px; line-height:1.6; color:#374151;"
+    headerStyle?: string; // "font-weight:600; font-size:14px; color:#1f2937;"
+    headerRightStyle?: string; // "color:#6b7280;"
+    subItemStyle?: string; // "font-size:14px; color:#4b5563; margin-top:2px;"
+    separator?: boolean;
+    separatorColor?: string;
+  };
+
+  head: {
+    name: string;
+    nameStyle?: string; // "font-size:24px; font-weight:bold; color:#111827;"
+    headline: string;
+    headlineStyle?: string; // "font-size:16px; color:#4b5563;"
+    contact?: Array<{ label: string; value: string }>;
+    includeContactLabel?: boolean; //default false , if the contact should be label or not like email:example@example.com
+  };
+
+  body: Array<{
+    side?: "side" | "main"; //   default main  //determine side where section should go only applicable in two column layout
+    title: string;
+    titleStyle?: string; // "font-weight:bold; font-size:16px; color:#1f2937;"
+    items: Array<{
+      header?: string[];
+      headerAlign?: "left" | "between" | "right";
+      headerStyle?: string; // Override global header style
+
+      content?: string;
+      contentStyle?: string; // Override global body style
+
+      subItems?: string[];
+      subItemsStyle?: string; // Override global sub-item style
+      bullet?: string; // "•" | "-" | "◆" | "→"
+    }>;
+  }>;
+}
+
+### important notes:###
+1. The resume must always be provided as a valid JSON object enclosed within a Markdown code block.
+2. Do not output plain JSON or any text that merely looks like JSON — it must be explicitly wrapped in a Markdown code block with the json language identifier.
+3. Ensure the JSON structure is fully valid (e.g., proper quoting, no trailing commas, correct nesting) before rendering.
+4. if the response contains multiple  json code blocks always put the json resume first else it will cause system failure
+5. the JSON schema is written in ts just for easy understanding but the client expects a json with the type  script structure 
+
+  ### structure reference (placeholder values only — do not reuse wording, styles, or counts) ###
+
+``` json 
+{
+  "layout": "vertical",
+  "style": {
+    "titleStyle": "font-weight:600; font-size:15px; color:#111;",
+    "bodyStyle": "font-size:13px; color:#333;"
+  },
+  "head": {
+    "name": "<name>",
+    "headline": "<headline>",
+    "contact": [{ "label": "Email", "value": "<email>" }],
+    "includeContactLabel": false
+  },
+  "body": [
+    {
+      "title": "<section title, e.g. Summary>",
+      "items": [
+        { "content": "<plain paragraph, no header>" }
+      ]
+    },
+    {
+      "title": "<section title, e.g. Skills>",
+      "items": [
+        { "content": "<comma-separated list as plain text>" }
+      ]
+    },
+    {
+      "title": "<section title, e.g. Experience>",
+      "items": [
+        {
+          "header": ["<role>", "<company / date>"],
+          "headerAlign": "between",
+          "subItems": ["<achievement 1>", "<achievement 2>"],
+          "bullet": "•"
+        }
+      ]
+    }
+  ]
+} ```

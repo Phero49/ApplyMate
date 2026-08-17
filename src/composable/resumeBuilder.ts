@@ -53,7 +53,9 @@ export async function exportPdf() {
     Notify.create({ message: "failed to find and load font" });
     return;
   }
-  console.log(currentFont);
+
+
+
   const font = {} as TFontDictionary;
   font[currentFont.name] = {
     ...currentFont["fontUrl"],

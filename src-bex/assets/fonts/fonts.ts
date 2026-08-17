@@ -5,7 +5,7 @@ async function fetchFontAsBlob(url: string, fontName: string): Promise<Blob> {
   if (!response.ok) {
     throw new Error(`Failed to load ${fontName}: ${response.status}`);
   }
-  return response.blob();
+  return await response.blob();
 }
 export async function saveDefaultFonts() {
   const fontConfigs = [
@@ -36,6 +36,7 @@ export async function saveDefaultFonts() {
     const blobs = await Promise.all(
       fontConfigs.map((config) => fetchFontAsBlob(config.url, config.name)),
     );
+
 
     const [normalBlob, boldBlob, bItalicBlob, italicBlob] = blobs;
     const normalConfig = fontConfigs[0];

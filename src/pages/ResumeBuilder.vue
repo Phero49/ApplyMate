@@ -58,12 +58,13 @@
               style="width: 210mm"
               :style="{ fontFamily: appStore.selectedFont }"
             >
-              <div>
+              <div v-if="resume.head">
                 <div section="head" class="">
                   <div
                     field="resume.head.name"
                     contenteditable
-                    :style="resume.head.nameStyle"
+                    :style="resume.head?.nameStyle"
+                    @blur="updateResumeHeader($event, 'name')"
                   >
                     {{ resume.head.name }}
                   </div>
@@ -71,6 +72,7 @@
                     contenteditable
                     field="resume.head.headline"
                     :style="resume.head.headlineStyle"
+                    @blur="updateResumeHeader($event, 'headline')"
                   >
                     {{ resume.head.headline }}
                   </div>
@@ -78,10 +80,18 @@
                   <div class="row" field="resume.head.contact">
                     <div
                       class="q-pr-md"
-                      v-for="value in resume.head.contact"
+                      v-for="(value, i) in resume.head.contact"
                       :key="value.label"
                       contenteditable
                       :field="'resume.head.contact.' + value.label"
+                      @blur="
+                        (e) => {
+                          const text = (e.target as HTMLDivElement).innerText;
+
+                          resume.head['contact']![i] = text as never;
+                          save();
+                        }
+                      "
                     >
                       {{
                         resume.head.includeContactLabel ? value.label + ":" : ""
@@ -102,6 +112,7 @@
                     <resume-body
                       :styles="resume.style"
                       :resumeBody="mapSides(resume.body).side"
+                      @save="save"
                     />
                   </template>
 
@@ -135,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, toRaw } from "vue";
 import { useAppContext } from "src/stores/appStore";
 import { onMounted } from "vue";
 import ResumeBuilderEditor from "src/components/ResumeBuilderEditor.vue";
@@ -148,14 +159,16 @@ import {
   getFonts,
   getGeneratedResume,
   getUserSettings,
+  saveGeneratedResume,
 } from "src/db";
 import { exportPdf } from "../composable/resumeBuilder";
 import { computed } from "vue";
 import ResumeBody from "src/components/ResumeBody.vue";
+import { saveDefaultFonts } from "app/src-bex/assets/fonts/fonts";
 //const templates = ref();
 const domStore = useDomStore();
-const resume = computed(() => useAppContext().resume);
 const appStore = useAppContext();
+const resume = computed(() => useAppContext().resume);
 const leftDrawerOpen = ref(true);
 const initSplit = computed(() => (resume.value.layout == "vertical" ? 0 : 35));
 const splitterModel = ref(initSplit);
@@ -229,13 +242,33 @@ const setSelectedFont = async (font: FontsList[0]) => {
   }
 };
 
+const updateResumeHeader = (e: Event, target: keyof FlexibleResume["head"]) => {
+  const text = (e.target as HTMLDivElement).innerText;
+
+  resume.value.head[target] = text as never;
+};
+
+const save = () => {
+  void saveGeneratedResume({
+    ...appStore.resumeData,
+    resume: toRaw(resume.value),
+  });
+};
+
 onMounted(async () => {
   await store.loadProfile();
   if (key) {
     const resumeData = await getGeneratedResume(key as string);
-    const fonts = await getFonts();
+    let fonts = await getFonts();
     const userSettings = await getUserSettings();
-    appStore.resumeFonts = fonts;
+    if (fonts.length <= 0) {
+      await saveDefaultFonts();
+      fonts = await getFonts();
+      appStore.resumeFonts = fonts;
+    } else {
+      appStore.resumeFonts = fonts;
+    }
+
     appStore.selectedFont =
       userSettings?.defaultFont || fonts[0]?.name || "Arial";
     const dFont = appStore.resumeFonts.find(

@@ -220,9 +220,6 @@
               filled
             />
           </div>
-          <div>
-            <select-ai-models @update:model-value="(v) => (aiProvider = v)" />
-          </div>
         </q-card-section>
 
         <q-card-actions align="right">

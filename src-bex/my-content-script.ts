@@ -15,6 +15,16 @@ import {
   createNotification,
   type NotificationData,
 } from "./utils/notification";
+import {
+  currentSelector,
+  dispatchEnter,
+  fillInput,
+  waitForSelector,
+} from "./utils/aiPageUtils";
+import {
+  chatResponseReady,
+  onChunkResponse,
+} from "./listeners/mainWorldToContentScript";
 const bridge = createBridge({ debug: false });
 
 declare module "@quasar/app-vite" {
@@ -22,21 +32,6 @@ declare module "@quasar/app-vite" {
     "some.event": [{ someProp: string }, void];
     "show-notification": [NotificationData, void];
   }
-}
-
-function getGeminiInput(): HTMLElement | null {
-  const el = document.querySelector<HTMLElement>("rich-textarea");
-  if (el) {
-    const input = el.querySelector<HTMLElement>("[contenteditable=true]");
-    if (input) {
-      return input;
-    }
-    const shadowRoot = chrome.dom.openOrClosedShadowRoot(el);
-    if (shadowRoot) {
-      return shadowRoot.querySelector<HTMLElement>("[contenteditable=true]");
-    }
-  }
-  return null;
 }
 
 // Configuration
@@ -51,115 +46,6 @@ const AI_SITES = {
 
 const AI_HOSTNAMES = Object.keys(AI_SITES) as Array<keyof typeof AI_SITES>;
 
-let currentSelector = "";
-function getElementBySelector(selector: string) {
-  if (selector === "rich-textarea") {
-    return getGeminiInput();
-  }
-  return document.querySelector<HTMLElement>(selector);
-}
-
-/**
- * Waits for an element matching the given selector to appear in the DOM.
- *
- * The DOM is checked once every second for up to 75 attempts (75 seconds).
- *
- * @param selector - The selector used to locate the element.
- * @returns A promise that resolves with the found element or rejects if it
- *          cannot be found within the timeout period.
- */
-const waitForSelector = (selector: string): Promise<Element> => {
-  // Maximum number of polling attempts (75 seconds).
-  const maxAttempts = 75;
-
-  // Tracks how many times we've checked for the element.
-  let attempts = 0;
-
-  // Store the selector so other parts of the extension know what we're waiting for.
-  currentSelector = selector;
-
-  return new Promise((resolve, reject) => {
-    const interval = setInterval(() => {
-      attempts++;
-
-      // Try to locate the element.
-      const element = getElementBySelector(selector);
-
-      // Resolve immediately when the element is found.
-      if (element) {
-        clearInterval(interval);
-        resolve(element);
-        return;
-      }
-
-      // Stop polling after the maximum number of attempts.
-      if (attempts >= maxAttempts) {
-        clearInterval(interval);
-
-        reject(
-          new Error(
-            "Failed to locate the input field. Please make sure you're logged in or check your network connection.",
-          ),
-        );
-      }
-    }, 1000);
-  });
-};
-
-const fillInput = (
-  selector: string,
-  value: string,
-  timeoutMs: number = 5000,
-): Promise<void> => {
-  return new Promise((resolve) => {
-    const startTime = Date.now();
-    let intervalId: NodeJS.Timeout | null = null;
-    let timeoutId: NodeJS.Timeout | null = null;
-
-    const attemptFill = () => {
-      const element = getElementBySelector(selector);
-
-      if (element) {
-        // Element found - fill it
-        if (element instanceof HTMLTextAreaElement) {
-          element.value = value;
-          element.dispatchEvent(new Event("input", { bubbles: true }));
-        } else if (element.getAttribute("contenteditable") === "true") {
-          element.innerText = value;
-          element.dispatchEvent(new Event("input", { bubbles: true }));
-        }
-
-        // Clean up and resolve
-        if (intervalId) clearInterval(intervalId);
-        if (timeoutId) clearTimeout(timeoutId);
-        resolve();
-        return;
-      }
-
-      // Check if timeout has been reached
-      if (Date.now() - startTime >= timeoutMs) {
-        // Clean up and exit quietly (resolve without doing anything)
-        if (intervalId) clearInterval(intervalId);
-        if (timeoutId) clearTimeout(timeoutId);
-        resolve(); // Quiet exit - resolve without error
-        return;
-      }
-    };
-
-    // Initial attempt
-    attemptFill();
-
-    // Set up retry interval (every 2 seconds)
-    intervalId = setInterval(attemptFill, 2000);
-
-    // Set up overall timeout
-    timeoutId = setTimeout(() => {
-      if (intervalId) clearInterval(intervalId);
-      if (timeoutId) clearTimeout(timeoutId);
-      resolve(); // Quiet exit on timeout
-    }, timeoutMs);
-  });
-};
 const getPageInfo = () => {
   const icon = document.querySelector("link[rel='icon']")?.getAttribute("href");
   const url = new URL(icon || "", location.origin).href;
@@ -278,19 +164,17 @@ const messageListeners: Record<string, (data?: any) => any> = {
     await waitForSelector(currentSelector);
     await fillInput(currentSelector, payload);
     watchAiGeneration((data, text) => {
-      setTimeout(() => {
-        void bridge.send({
-          event: "firstMessageResponse",
-          payload: {
-            mgs: {
-              data,
-              text,
-            },
-            window: getPageInfo(),
+      void bridge.send({
+        event: "firstMessageResponse",
+        payload: {
+          mgs: {
+            data,
+            text,
           },
-          to: "app",
-        });
-      }, 2000);
+          window: getPageInfo(),
+        },
+        to: "app",
+      });
     });
 
     setTimeout(() => {
@@ -367,20 +251,6 @@ bridge.on("extract-job-details", async ({ payload }) => {
   }, 2000);
 });
 
-function dispatchEnter(element: HTMLElement) {
-  element.focus();
-
-  element.dispatchEvent(
-    new KeyboardEvent("keydown", {
-      key: "Enter",
-      code: "Enter",
-      bubbles: true,
-      cancelable: true,
-      composed: true,
-    }),
-  );
-}
-
 bridge.on("fillForm", async ({ payload }) => {
   await fillInput(currentSelector, payload.html);
   watchAiGeneration((data) => {
@@ -403,67 +273,16 @@ bridge.on("showNotification", ({ payload }) => {
 function watchAiGeneration(callback: (data: any, text?: string[]) => void) {
   const hostname = window.location.hostname;
 
-  // // Providers that need DOM-only polling don't use the main-world bridge
-  // const DOM_ONLY_PROVIDERS = ["chatgpt.com", "gemini.google.com"];
-
-  // if (!DOM_ONLY_PROVIDERS.includes(hostname)) {
-  //   console.warn("[ApplyMate] No watcher configured for", hostname);
-  //   return;
-  // }
-
   // Trigger the main-world interceptor for this provider
   window.postMessage({ type: "listenToAi" }, location.origin);
-  let attempts = 3;
 
   window.addEventListener("message", (event) => {
     if (event.data.type === "chat-response-ready") {
-      console.log(event.data.detail.text, "response from ai");
-      const parts = event.data.detail.text.split(/```(?:json)+/, 2);
-      const secondPart = parts.length > 1 ? parts[1]?.split("```", 2) : null;
-      const jsonString = secondPart?.[0] || null;
-      const noneCodeBlock = [parts[0], secondPart?.[1]];
-
-      let json = "";
-
-      if (jsonString && jsonString.length > 2) {
-        try {
-          const parsedJson = JSON.parse(jsonString || "{}");
-          json = parsedJson;
-        } catch (e) {
-          if (attempts > 0) {
-            const message = `an error occurred with the json block: ${e as any} 
-  ----
-  ###Tips ###
-  the parser always assume the first json block is the resume json data also make sure you also provide a valid json 
-  code block can be parsed with javascript json parser`;
-            void fillInput(currentSelector, message);
-            dispatchEnter(document.querySelector(currentSelector)!);
-            const msg =
-              "the model responded but an error occurred processing  the response attempting a try again ";
-            if (bridge.portList.includes("app")) {
-              void bridge.send({
-                event: "responseError",
-                to: "app",
-                payload: msg,
-              });
-            }
-            createNotification({ message: msg, type: "negative" });
-
-            attempts--;
-            return;
-          } else {
-            attempts = 3;
-            void bridge.send({
-              event: "communicationError",
-              to: "app",
-              payload:
-                "Failed to get prompt in the right form after 3 attempts ",
-            });
-          }
-        }
-      }
-      callback(json, noneCodeBlock);
-      attempts = 3;
+      chatResponseReady(event, bridge, callback);
+    }
+    if (event.data.type === "chat-response-chunk") {
+      onChunkResponse(event, bridge);
+      console.log("chunk");
     }
   });
 
@@ -471,10 +290,7 @@ function watchAiGeneration(callback: (data: any, text?: string[]) => void) {
 }
 
 // Bridge connection
-bridge
-  .connectToBackground()
-  .then(() => console.log("Connected to background"))
-  .catch((err) => console.error("Failed to connect to background:", err));
+void bridge.connectToBackground();
 
 // Initialize
 // eslint-disable-next-line @typescript-eslint/no-misused-promises

@@ -228,6 +228,7 @@ const sample2 = {
     {
       side: "main",
       title: "Professional Summary",
+
       titleStyle:
         "font-weight:700; font-size:15px; color:#1f2937; border-bottom:2px solid #e5e7eb; padding-bottom:4px;",
       items: [
@@ -360,7 +361,7 @@ export const useAppContext = defineStore("appContext", {
     resume: sample2 as FlexibleResume,
     aiChatUrl: "",
     resumeFonts: [] as FontsList,
-    selectedFont: "" ,
+    selectedFont: "",
     //used in saving updates of the resume
     resumeData: null as any,
     stats: undefined as Stats | undefined,

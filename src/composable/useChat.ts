@@ -1,5 +1,4 @@
 import { reactive, ref, toRaw } from "vue";
-import { type Resume, useAppContext } from "src/stores/appStore";
 import type { BexBridge } from "@quasar/app-vite";
 import { marked } from "marked";
 import highlight from "highlight.js";
@@ -9,6 +8,7 @@ import {
   type ChatConversation,
   type ChatMessageRecord,
 } from "src/db";
+import { useAppContext } from "src/stores/appStore";
 export interface ChatMessage {
   id: string;
   role: "user" | "model";
@@ -20,6 +20,7 @@ export interface ChatMessage {
 const messages = ref<ChatMessage[]>([]);
 const isStreaming = ref(false);
 const error = ref<string | null>(null);
+const timeoutId = ref();
 export const chatMeta = reactive({
   id: "",
   title: "",
@@ -106,7 +107,7 @@ export function useChat(bridge: BexBridge) {
         void chrome.tabs.sendMessage(tab.id, payload);
       }
 
-      const timeoutId = setTimeout(() => {
+      timeoutId.value = setTimeout(() => {
         //timeout error  after 30 second
         if (assistantMsg.streaming) {
           assistantMsg.streaming = false;
@@ -119,9 +120,10 @@ export function useChat(bridge: BexBridge) {
       }, 30000); // 30 seconds timeout
 
       bridge.once("chatProxyResponse", async ({ payload }) => {
+        debugger;
         const aiRensponse = payload.text as string[];
-        clearTimeout(timeoutId);
-        aiRensponse.join("\n");
+        console.log(payload, "<---000000000000000000---->");
+        clearTimeout(timeoutId.value);
         const messageContent = await marked.parse(aiRensponse.join("\n"));
         messages.value.pop();
         messages.value.push({
@@ -132,9 +134,9 @@ export function useChat(bridge: BexBridge) {
         await persistConversation();
 
         if (payload.data) {
-          appContent.resume = payload.data as Resume;
+          appContent.resume = payload.data as FlexibleResume;
           if (appContent.resumeData) {
-            appContent.resumeData.resume = payload.data as Resume;
+            appContent.resumeData.resume = payload.data as FlexibleResume;
             void saveGeneratedResume(toRaw(appContent.resumeData));
           }
         }
@@ -142,6 +144,7 @@ export function useChat(bridge: BexBridge) {
           const el = document.querySelector<HTMLElement>(
             `#message-${assistantMsg.id}`,
           );
+
           if (el) {
             highlight.highlightElement(el);
           }
@@ -167,11 +170,16 @@ export function useChat(bridge: BexBridge) {
     await persistConversation();
   }
 
+  function cancelTimeout() {
+    if (timeoutId.value != undefined) {
+      clearTimeout(timeoutId.value);
+    }
+  }
   return {
     messages,
     isStreaming,
+    cancelTimeout,
     error,
-
     sendMessage,
     clearChat,
   };

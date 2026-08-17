@@ -40,6 +40,7 @@ import {
   symRoundedInboxText,
 } from "@quasar/extras/material-symbols-rounded";
 import { useQuasar } from "quasar";
+import type { UserSettings } from "src/db";
 import {
   addSavedLink,
   getProfile,
@@ -59,8 +60,9 @@ const openExtension = (page: string) => {
 };
 const defaultAI = ref("deepseek");
 
+let savedSettings: UserSettings | undefined;
 onMounted(async () => {
-  const savedSettings = await getUserSettings();
+  savedSettings = await getUserSettings();
   if (savedSettings?.defaultAi) {
     defaultAI.value = savedSettings.defaultAi;
   }
@@ -68,12 +70,13 @@ onMounted(async () => {
 
 const onAiChange = async (value: string) => {
   defaultAI.value = value;
-
+  if (savedSettings == undefined) {
+    return;
+  }
   await saveUserSettings({
+    ...savedSettings,
     id: "current",
     defaultAi: value as AiProvider,
-    remindersEnabled: true,
-    reminderIntervalHours: 24,
   });
 };
 
@@ -129,7 +132,6 @@ const actions = [
         $q.notify({ message: "link saved", type: "positive" });
       } catch (e) {
         console.error("error", e);
-        alert(e);
         $q.notify({ message: "error failed to save link", type: "negative" });
       }
     },

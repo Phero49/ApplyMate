@@ -31,4 +31,4 @@ Follow these rules strictly:
     - Work Experience (most recent first, with 3-5 bullets max per role)
     - Education & Certifications (only if relevant or recent)
     - Omit "References available upon request"
-11.  when generating the resume, if the response  Include the json resume start with  an h6 like  ###### json resume ######
+

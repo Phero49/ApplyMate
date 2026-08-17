@@ -5,7 +5,7 @@
     :section="'body.' + item.title"
   >
     <div
-      :style="item.titleStyle"
+      :style="styles?.titleStyle || item.titleStyle"
       section="title"
       :field="'resume.body.title.' + index"
       contenteditable
@@ -29,7 +29,7 @@
           { 'justify-start': item2.headerAlign == 'left' },
           { 'justify-end': item2.headerAlign == 'right' },
         ]"
-        :style="item2.headerStyle"
+        :style="styles?.headerStyle || item2.headerStyle"
       >
         <div
           :field="`resume.body.header:[${subIndex},${item2},${i}]`"
@@ -100,6 +100,7 @@ const props = defineProps<{
   styles: FlexibleResume["style"];
 }>();
 
+const emit = defineEmits<{ save: [] }>();
 const updateField = (
   type: "title" | "headerText" | "content" | "subItem",
   path: {
@@ -139,5 +140,6 @@ const updateField = (
       break;
     }
   }
+  emit("save");
 };
 </script>

@@ -108,7 +108,7 @@ export const useGenerateNewAiResume = (bex: BexBridge, router: Router) => {
       bex.on("firstMessageResponse", async ({ payload }) => {
         // Notify the user when a response is received
         dismiss();
-        alert("ffff");
+        console.log("meaage", payload);
         const p = payload as FirstMessagePayload;
         Notify.create({
           type: "positive",
