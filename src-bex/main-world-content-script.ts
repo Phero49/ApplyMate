@@ -25,7 +25,7 @@ import { watchQwen } from "./interceptors/qwen";
 const PROVIDER_WATCHERS: Record<string, () => void> = {
   "chat.deepseek.com": watchDeepSeek,
   "chat.qwen.ai": watchQwen,
-  "chat.openai.com": watchChatGPT,
+  "chatgpt.com": watchChatGPT,
 };
 
 window.addEventListener("message", (event: MessageEvent) => {

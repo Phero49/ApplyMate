@@ -22,13 +22,13 @@
     </q-tabs>
     <q-tab-panels v-model="tab" animated>
       <q-tab-panel name="layout">
-        <q-list>
+        <q-list v-if="appStore.resume" >
           <q-item
             clickable
             v-ripple
             v-for="layout in availableLayouts"
             :key="layout.name"
-            @click="appStore.resume.layout = layout.name"
+            @click="appStore.resume!.layout = layout.name"
           >
             <q-item-section avatar>
               <q-icon color="primary" :name="layout.icon" />
@@ -37,10 +37,11 @@
               layout.name + " " + (layout.columnSide || "")
             }}</q-item-section>
             <q-item-section side>
-              <q-radio v-model="appStore.resume.layout" :val="layout.name" />
+              <q-radio v-model="appStore.resume!.layout" :val="layout.name" />
             </q-item-section>
           </q-item>
         </q-list>
+        <div v-else>No resume generated yet to select layout</div>
       </q-tab-panel>
       <q-tab-panel name="format">
         <format-text />

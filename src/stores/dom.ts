@@ -39,10 +39,14 @@ export const useDomStore = defineStore("dom", {
           if (itemName) {
             const keys = itemName.split(".");
             let item = useAppContext().resume;
-            for (let i = 0; i < keys.length - 1; i++) {
-              item = item[keys[i] as keyof typeof item] as any;
+            if (item == null) {
+              return;
             }
-            delete item[keys[keys.length - 1] as keyof typeof item];
+            for (let i = 0; i < keys.length - 1; i++) {
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+              item = item![keys[i] as keyof typeof item] as any;
+            }
+            delete item![keys[keys.length - 1] as keyof typeof item];
           }
         }
         el.remove();
@@ -111,43 +115,6 @@ export const useDomStore = defineStore("dom", {
 });
 
 const domeStore = useDomStore();
-
-export function onDoubleClick(event: Event) {
-  const target = event.target as HTMLElement;
-  if (target.classList.contains("content-container")) {
-    return;
-  }
-  // Save state before starting edit
-  domeStore.saveState();
-
-  domeStore.selectedElement = target;
-  target.classList.add("item-selected", "rounded-borders");
-  target.contentEditable = "true";
-  target.focus();
-  target.addEventListener("blur", onBlur);
-}
-
-export function onBlur(event: Event) {
-  const target = event.target as HTMLElement;
-  target.classList.remove("item-selected");
-  target.contentEditable = "false";
-  const parent = getParentItem(target);
-  if (parent) {
-    const itemName = parent.getAttribute("item-name");
-    if (itemName) {
-      const keys = itemName.split(".");
-      let item = useAppContext().resume;
-      for (let i = 0; i < keys.length - 1; i++) {
-        item = item[keys[i] as keyof typeof item] as any;
-      }
-      item[keys[keys.length - 1] as keyof typeof item] =
-        target.textContent as any;
-    }
-  }
-  // Save state after blur if content changed
-  // (In a real app we might compare HTML to avoid redundant saves)
-  domeStore.saveState();
-}
 
 export function onContextMenu(event: MouseEvent) {
   const target = event.target as HTMLElement;

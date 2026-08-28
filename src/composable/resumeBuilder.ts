@@ -45,6 +45,9 @@ const SPACING = {
 
 export async function exportPdf() {
   const resume = appStore.resume;
+  if (resume == null) {
+    return;
+  }
   const currentFont = appStore.resumeFonts.find(
     (v) => v.name === appStore.selectedFont,
   );
@@ -53,8 +56,6 @@ export async function exportPdf() {
     Notify.create({ message: "failed to find and load font" });
     return;
   }
-
-
 
   const font = {} as TFontDictionary;
   font[currentFont.name] = {

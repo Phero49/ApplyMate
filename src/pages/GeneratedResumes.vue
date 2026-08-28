@@ -243,7 +243,6 @@ import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar";
 import type { BexBridge } from "@quasar/app-vite";
-import SelectAiModels from "src/components/SelectAiModels.vue";
 import { useGenerateNewAiResume } from "src/composable/generateNewResume";
 
 interface GeneratedResume {
@@ -262,7 +261,6 @@ const {
   includeProfile,
   includePrompt,
   selectedPrompt,
-  aiProvider,
   createNewResume,
   sendMessage,
 } = useGenerateNewAiResume(bex, router);

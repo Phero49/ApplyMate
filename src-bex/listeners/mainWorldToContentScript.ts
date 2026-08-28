@@ -16,14 +16,16 @@ export const chatResponseReady = (
 ) => {
   const parts = event.data.detail.text.split(/```(?:json)+/, 2);
   const secondPart = parts.length > 1 ? parts[1]?.split("```", 2) : null;
-  const jsonString = secondPart?.[0] || null;
+  const jsonString = secondPart?.[0] || (null as string | null);
   const noneCodeBlock = [parts[0], secondPart?.[1]];
 
   let json = {};
+  console.log(jsonString, "trimed", jsonString.trim());
 
   try {
-    const parsedJson = JSON.parse(jsonString || "{}");
+    const parsedJson = JSON.parse((jsonString || "{}").trim());
     json = parsedJson;
+
     callback(parsedJson, noneCodeBlock);
     // bridge.send({event:'responseFinished',to:'app',payload:{data:parsedJson,text:noneCodeBlock}})
   } catch (e) {
@@ -70,7 +72,7 @@ function onResponseError(e: any, bridge: BexBridge) {
 export function onChunkResponse(event: MessageEvent, bridge: BexBridge) {
   const parts = event.data.detail.text.split(/```(?:json)+/, 2);
   const secondPart = parts.length > 1 ? parts[1]?.split("```", 2) : null;
-  const jsonString = secondPart?.[0] || null;
+  const jsonString = secondPart?.[0].trim() || null;
   const noneCodeBlock = [parts[0], secondPart?.[1]];
   let jsonCode = null;
   try {

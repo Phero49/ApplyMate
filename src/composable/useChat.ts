@@ -120,9 +120,7 @@ export function useChat(bridge: BexBridge) {
       }, 30000); // 30 seconds timeout
 
       bridge.once("chatProxyResponse", async ({ payload }) => {
-        debugger;
         const aiRensponse = payload.text as string[];
-        console.log(payload, "<---000000000000000000---->");
         clearTimeout(timeoutId.value);
         const messageContent = await marked.parse(aiRensponse.join("\n"));
         messages.value.pop();

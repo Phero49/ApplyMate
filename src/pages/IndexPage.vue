@@ -108,7 +108,12 @@ const actions = [
     icon: symRoundedInboxText,
     title: "generate cover letter",
     description: "generate cover letter",
-    action: () => {},
+    action: async () => {
+      const body = await bex.send({
+        event: "getCurrentDocumentBodyText",
+        to: "background",
+      });
+    },
   },
   {
     icon: symRoundedBookmarkAdd,
@@ -170,6 +175,9 @@ const actions = [
           applicationMode: string[] //'postal mail' | 'email' | 'external website' | 'unknown'
           }
        \`\`\`
+
+       ***NOTE*** 
+       dont escape the back ticks in your response as i did so in the structure
 
        ***job details****
        ${body.data.textContent}

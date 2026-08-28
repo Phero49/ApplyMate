@@ -88,7 +88,7 @@
                         (e) => {
                           const text = (e.target as HTMLDivElement).innerText;
 
-                          resume.head['contact']![i] = text as never;
+                          resume!.head['contact']![i] = text as never;
                           save();
                         }
                       "
@@ -137,6 +137,11 @@
               "
             >
               <div class="text-center text-h6">No resume generated yet</div>
+              {{
+                key ===
+                "https://chat.deepseek.com/a/chat/s/ac0516a3-ea2f-4943-9ba1-286e8b538cb3"
+              }}
+              ---
             </div>
           </div>
         </div>
@@ -170,10 +175,10 @@ const domStore = useDomStore();
 const appStore = useAppContext();
 const resume = computed(() => useAppContext().resume);
 const leftDrawerOpen = ref(true);
-const initSplit = computed(() => (resume.value.layout == "vertical" ? 0 : 35));
+const initSplit = computed(() => (resume.value?.layout == "vertical" ? 0 : 35));
 const splitterModel = ref(initSplit);
 const mapSides = (body: FlexibleResume["body"]) => {
-  if (resume.value.layout == "vertical") return { main: body, side: [] };
+  if (resume.value?.layout == "vertical") return { main: body, side: [] };
   const main = [] as FlexibleResume["body"];
   const side = [] as FlexibleResume["body"];
   body.forEach((v) => {
@@ -226,7 +231,8 @@ const setSelectedFont = async (font: FontsList[0]) => {
     // 2. Call load() and push the promise to our tracker array
     const loadPromise = fontFace.load().then((loadedFace) => {
       // 3. Register the loaded font face into the document
-      document.fonts.add(loadedFace);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (document.fonts as any).add(loadedFace);
       return loadedFace;
     });
 
@@ -245,7 +251,7 @@ const setSelectedFont = async (font: FontsList[0]) => {
 const updateResumeHeader = (e: Event, target: keyof FlexibleResume["head"]) => {
   const text = (e.target as HTMLDivElement).innerText;
 
-  resume.value.head[target] = text as never;
+  resume.value!.head[target] = text as never;
 };
 
 const save = () => {
@@ -277,7 +283,7 @@ onMounted(async () => {
     if (dFont != undefined) {
       void setSelectedFont(dFont);
     }
-    // appStore.resume = resumeData.resume == "" ? {} : resumeData.resume;
+    appStore.resume = resumeData.resume == "" ? null : resumeData.resume;
     appStore.resumeData = resumeData;
     appStore.aiChatUrl = resumeData.chatUrl;
   }

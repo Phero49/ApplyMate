@@ -3,9 +3,7 @@
     <div class="row items-center justify-between q-mb-md border-bottom q-pb-sm">
       <div>
         <h1 class="text-h5 text-weight-bold q-my-none">Saved Links</h1>
-        <p class="text-body2 text-grey q-mt-xs">
-           website links you bookmarked
-        </p>
+        <p class="text-body2 text-grey q-mt-xs">website links you bookmarked</p>
       </div>
     </div>
 
@@ -14,15 +12,9 @@
         <q-card bordered flat class="border-outline form-card overflow-hidden">
           <q-list separator>
             <template v-for="(link, i) in savedLinks" :key="link.id">
-              <q-item class="q-py-md activity-item">
+              <q-item class="q-py-md activity-item" :href="link.url">
                 <q-item-section avatar>
-                  <q-avatar
-                    size="36px"
-                    color="primary"
-                    text-color="white"
-                    rounded
-                    class="opacity-80"
-                  >
+                  <q-avatar size="36px" rounded class="opacity-80">
                     <img :src="link.icon" alt="" srcset="" />
                   </q-avatar>
                 </q-item-section>
@@ -42,7 +34,7 @@
                       flat
                       round
                       color="grey"
-                      @click="deleteLink(link.id, i)"
+                      @click.stop.prevent="deleteLink(link.id, i)"
                       dense
                       icon="close"
                     />

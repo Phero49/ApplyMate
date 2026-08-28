@@ -144,30 +144,20 @@ import CountDownTimer from "src/components/countDownTimer.vue";
 
 const vParseText = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mounted(el: HTMLElement, binding: any) {
-    const markdownText = binding.value;
+  async mounted(el: HTMLElement, binding: any) {
+    const rawText = binding.value;
 
-    if (!markdownText) {
+    if (!rawText) {
       el.innerHTML = "";
       return;
     }
 
-    // Parse markdown to HTML
-    const parsedHtml = marked.parse(markdownText);
+    const markdownText = rawText.replace(/\\n/g, "\n");
 
+    // Parse markdown to HTML
+    const parsedHtml = await marked.parse(markdownText);
+    el.innerHTML = parsedHtml;
     // Handle both sync and async marked versions
-    if (parsedHtml instanceof Promise) {
-      parsedHtml
-        .then((html) => {
-          el.innerHTML = html;
-        })
-        .catch((err) => {
-          console.error("Markdown parsing error:", err);
-          el.innerHTML = '<p style="color: red;">Error parsing markdown</p>';
-        });
-    } else {
-      el.innerHTML = parsedHtml;
-    }
   },
 };
 
